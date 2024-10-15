@@ -2,7 +2,13 @@
 name = "bevy_ui_inspector"
 version = "0.1.0"
 edition = "2021"
+description = "A tool for inspecting bevy ui"
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/mahulst/bevy_ui_inspector"
+readme = "README.md"
 
 [dependencies]
 bevy = "0.14.2"
 bevy_egui = "0.30.0"
+
+
