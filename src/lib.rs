@@ -451,10 +451,9 @@ fn render_nested_elements(
         });
     }
 }
-
-pub struct UiInpector;
-impl Plugin for UiInpector {
-    fn build(&self, app: &mut App) {
+pub struct UiInspectorPlugin;
+impl Plugin for UiInspectorPlugin {
+     fn build(&self, app: &mut App) {
         app.add_plugins(EguiPlugin);
         app.insert_resource(RestorePreviousResource::default());
         app.insert_resource(PickingUiNode::default());
