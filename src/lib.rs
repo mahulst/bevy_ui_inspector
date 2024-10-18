@@ -7,6 +7,9 @@ use bevy_egui::{
     EguiContexts, EguiPlugin,
 };
 use std::mem;
+pub mod dropdown;
+pub mod theme;
+pub mod icons;
 
 #[derive(Resource, Default)]
 struct RestorePreviousResource {
@@ -24,7 +27,7 @@ struct PreviousElementHighlighted {
     border_width: UiRect,
 }
 
-#[derive(Default, PartialEq, Eq)]
+#[derive(Default, PartialEq, Eq, Clone)]
 pub enum ValTypes {
     #[default]
     Auto,
