@@ -1,3 +1,5 @@
+use bevy::color::palettes::css::BLACK;
+use bevy::ui::FocusPolicy;
 use bevy::{color::palettes::tailwind::*, prelude::*, window::WindowResolution};
 use bevy_ui_inspector::dropdown::{
     self, create_dropdown, Dropdown, DropdownBox, DropdownItem, DropdownPlugin, DropdownSelected,
@@ -24,14 +26,16 @@ fn main() {
         .add_systems(Startup, spawn_layout.after(setup_icons))
         .add_systems(
             Update,
-            (
-                update_style_property,
+            ((
+                update_style_panel,
                 val_input_width_fixer,
                 update_text_input,
                 text_input_focus,
                 handle_keyboard_input,
                 background_click_system_input_focus,
-            ),
+                update_style_property,
+            )
+                .chain()),
         )
         .run();
 }
@@ -46,6 +50,7 @@ fn spawn_layout(
     let font: Handle<Font> = asset_server.load("fonts/FiraSans-Bold.ttf");
     theme.font = font;
     commands.spawn(Camera2dBundle::default());
+    let position_thing = spacing(&mut commands, &theme);
     let entity_id = commands
         .spawn(
             (NodeBundle {
@@ -55,80 +60,16 @@ fn spawn_layout(
                     top: Val::Px(300.0),
                     width: Val::Px(150.0),
                     height: Val::Px(50.0),
-                    padding: UiRect::all(Val::Px(12.0)),
+                    margin: UiRect::all(Val::Percent(12.0)),
+                    padding: UiRect::all(Val::Auto),
+                    border: UiRect::all(Val::Px(1.0)),
                     ..default()
                 },
                 ..default()
             }),
         )
         .id();
-    active_style_inspection.entity = entity_id.into();
-    let dd1 = create_dropdown(
-        &mut commands,
-        &icons,
-        &theme,
-        vec![
-            DropdownItem {
-                label: "Item 1".to_string(),
-                value: Box::new(1usize),
-            },
-            DropdownItem {
-                label: "Item 2".to_string(),
-                value: Box::new(2),
-            },
-            DropdownItem {
-                label: "Item 3".to_string(),
-                value: Box::new(3),
-            },
-            DropdownItem {
-                label: "Item 4".to_string(),
-                value: Box::new(4),
-            },
-            DropdownItem {
-                label: "Item 5".to_string(),
-                value: Box::new(5),
-            },
-        ],
-        Dropdown {
-            open: false,
-            selected: DropdownItem {
-                label: "Item 5".to_string(),
-                value: Box::new(5),
-            },
-        },
-    );
-    let dd2 = create_dropdown::<Display>(
-        &mut commands,
-        &icons,
-        &theme,
-        vec![
-            DropdownItem {
-                label: "Flex".to_string(),
-                value: Box::new(Display::Flex),
-            },
-            DropdownItem {
-                label: "Grid".to_string(),
-                value: Box::new(Display::Grid),
-            },
-            DropdownItem {
-                label: "Block".to_string(),
-                value: Box::new(Display::Block),
-            },
-            DropdownItem {
-                label: "None".to_string(),
-                value: Box::new(Display::None),
-            },
-        ],
-        Dropdown {
-            open: false,
-            selected: DropdownItem {
-                label: "Flex".to_string(),
-                value: Box::new(Display::Flex),
-            },
-        },
-    );
-    let input = create_input(&mut commands, &theme);
-    let val_input = create_val_thing(
+    let margin_left = create_val_thing(
         &mut commands,
         &icons,
         &theme,
@@ -141,26 +82,402 @@ fn spawn_layout(
         },
         ValTypeLink::MarginLeft,
     );
+    let margin_right = create_val_thing(
+        &mut commands,
+        &icons,
+        &theme,
+        Dropdown {
+            open: false,
+            selected: DropdownItem {
+                label: "px".to_string(),
+                value: ValTypes::Px.into(),
+            },
+        },
+        ValTypeLink::MarginRight,
+    );
+    let margin_top = create_val_thing(
+        &mut commands,
+        &icons,
+        &theme,
+        Dropdown {
+            open: false,
+            selected: DropdownItem {
+                label: "px".to_string(),
+                value: ValTypes::Px.into(),
+            },
+        },
+        ValTypeLink::MarginTop,
+    );
+    let margin_bottom = create_val_thing(
+        &mut commands,
+        &icons,
+        &theme,
+        Dropdown {
+            open: false,
+            selected: DropdownItem {
+                label: "px".to_string(),
+                value: ValTypes::Px.into(),
+            },
+        },
+        ValTypeLink::MarginBottom,
+    );
+    let padding_left = create_val_thing(
+        &mut commands,
+        &icons,
+        &theme,
+        Dropdown {
+            open: false,
+            selected: DropdownItem {
+                label: "px".to_string(),
+                value: ValTypes::Px.into(),
+            },
+        },
+        ValTypeLink::PaddingLeft,
+    );
+    let padding_right = create_val_thing(
+        &mut commands,
+        &icons,
+        &theme,
+        Dropdown {
+            open: false,
+            selected: DropdownItem {
+                label: "px".to_string(),
+                value: ValTypes::Px.into(),
+            },
+        },
+        ValTypeLink::PaddingRight,
+    );
+    let padding_top = create_val_thing(
+        &mut commands,
+        &icons,
+        &theme,
+        Dropdown {
+            open: false,
+            selected: DropdownItem {
+                label: "px".to_string(),
+                value: ValTypes::Px.into(),
+            },
+        },
+        ValTypeLink::PaddingTop,
+    );
+    let padding_bottom = create_val_thing(
+        &mut commands,
+        &icons,
+        &theme,
+        Dropdown {
+            open: false,
+            selected: DropdownItem {
+                label: "px".to_string(),
+                value: ValTypes::Px.into(),
+            },
+        },
+        ValTypeLink::PaddingBottom,
+    );
+    let border_left = create_val_thing(
+        &mut commands,
+        &icons,
+        &theme,
+        Dropdown {
+            open: false,
+            selected: DropdownItem {
+                label: "px".to_string(),
+                value: ValTypes::Px.into(),
+            },
+        },
+        ValTypeLink::BorderLeft,
+    );
+    let border_right = create_val_thing(
+        &mut commands,
+        &icons,
+        &theme,
+        Dropdown {
+            open: false,
+            selected: DropdownItem {
+                label: "px".to_string(),
+                value: ValTypes::Px.into(),
+            },
+        },
+        ValTypeLink::BorderRight,
+    );
+    let border_top = create_val_thing(
+        &mut commands,
+        &icons,
+        &theme,
+        Dropdown {
+            open: false,
+            selected: DropdownItem {
+                label: "px".to_string(),
+                value: ValTypes::Px.into(),
+            },
+        },
+        ValTypeLink::BorderTop,
+    );
+    let border_bottom = create_val_thing(
+        &mut commands,
+        &icons,
+        &theme,
+        Dropdown {
+            open: false,
+            selected: DropdownItem {
+                label: "px".to_string(),
+                value: ValTypes::Px.into(),
+            },
+        },
+        ValTypeLink::BorderBottom,
+    );
+    let margin_title = commands
+        .spawn(TextBundle {
+            text: Text::from_section(
+                "margin".to_string(),
+                TextStyle {
+                    font: theme.font.clone(),
+                    font_size: theme.input.size,
+                    color: theme.input.color,
+                },
+            ),
+            ..Default::default()
+        })
+        .id();
+    let padding_title = commands
+        .spawn(TextBundle {
+            text: Text::from_section(
+                "padding".to_string(),
+                TextStyle {
+                    font: theme.font.clone(),
+                    font_size: theme.input.size,
+                    color: theme.input.color,
+                },
+            ),
+            ..Default::default()
+        })
+        .id();
+    let border_title = commands
+        .spawn(TextBundle {
+            text: Text::from_section(
+                "border".to_string(),
+                TextStyle {
+                    font: theme.font.clone(),
+                    font_size: theme.input.size,
+                    color: theme.input.color,
+                },
+            ),
+            ..Default::default()
+        })
+        .id();
+    let left_title = commands
+        .spawn(TextBundle {
+            text: Text::from_section(
+                "left".to_string(),
+                TextStyle {
+                    font: theme.font.clone(),
+                    font_size: theme.input.size,
+                    color: theme.input.color,
+                },
+            ),
+            ..Default::default()
+        })
+        .id();
+    let right_title = commands
+        .spawn(TextBundle {
+            text: Text::from_section(
+                "right".to_string(),
+                TextStyle {
+                    font: theme.font.clone(),
+                    font_size: theme.input.size,
+                    color: theme.input.color,
+                },
+            ),
+            ..Default::default()
+        })
+        .id();
+    let top_title = commands
+        .spawn(TextBundle {
+            text: Text::from_section(
+                "top".to_string(),
+                TextStyle {
+                    font: theme.font.clone(),
+                    font_size: theme.input.size,
+                    color: theme.input.color,
+                },
+            ),
+            ..Default::default()
+        })
+        .id();
+    let bottom_title = commands
+        .spawn(TextBundle {
+            text: Text::from_section(
+                "bottom".to_string(),
+                TextStyle {
+                    font: theme.font.clone(),
+                    font_size: theme.input.size,
+                    color: theme.input.color,
+                },
+            ),
+            ..Default::default()
+        })
+        .id();
+    let empty = commands.spawn(NodeBundle::default()).id();
     let mut dd_container = commands.spawn((
         NodeBundle {
+            background_color: theme.background.into(),
             style: Style {
-                flex_direction: FlexDirection::Row,
+                flex_direction: FlexDirection::Column,
+                position_type: PositionType::Absolute,
+
                 row_gap: Val::Px(12.0),
                 width: Val::Px(500.0),
+                height: Val::Percent(100.0),
+                right: Val::Px(12.0),
+                top: Val::Px(12.0),
                 ..default()
             },
             ..default()
         },
-        Name::new("DropdownContainer"),
+        Name::new("StylePanel"),
     ));
-
-    dd_container.add_child(dd1);
-    dd_container.add_child(dd2);
-    dd_container.add_child(val_input);
+    dd_container.push_children(&[position_thing]);
+    dd_container.with_children(|builder| {
+        let mut ui_rect_grid = builder.spawn((
+            NodeBundle {
+                style: Style {
+                    display: Display::Grid,
+                    grid_template_columns: RepeatedGridTrack::min_content(5),
+                    grid_template_rows: RepeatedGridTrack::min_content(3),
+                    ..default()
+                },
+                ..default()
+            },
+            Name::new("UiRectGrid"),
+        ));
+        ui_rect_grid.push_children(&[
+            empty,
+            left_title,
+            right_title,
+            top_title,
+            bottom_title,
+            margin_title,
+            margin_left,
+            margin_right,
+            margin_top,
+            margin_bottom,
+            padding_title,
+            padding_left,
+            padding_right,
+            padding_top,
+            padding_bottom,
+            border_title,
+            border_left,
+            border_right,
+            border_top,
+            border_bottom,
+        ]);
+    });
+    active_style_inspection.entity = entity_id.into();
 }
-#[derive(Component)]
+fn get_val_type(val: Val) -> ValTypes {
+    match val {
+        Val::Px(_) => ValTypes::Px,
+        Val::Percent(_) => ValTypes::Percent,
+        Val::Vw(_) => ValTypes::Vw,
+        Val::Vh(_) => ValTypes::Vh,
+        Val::VMin(_) => ValTypes::VMin,
+        Val::VMax(_) => ValTypes::VMax,
+        Val::Auto => ValTypes::Auto,
+    }
+}
+fn get_number_val(val: Val) -> f32 {
+    match val {
+        Val::Px(num) => num,
+        Val::Percent(num) => num,
+        Val::Vw(num) => num,
+        Val::Vh(num) => num,
+        Val::VMin(num) => num,
+        Val::VMax(num) => num,
+        Val::Auto => 0.0,
+    }
+}
+fn update_style_panel(
+    style_inputs_q: Query<(&ValTypeLink, Entity)>,
+    active_style_inspection: Res<ActiveStyleInspection>,
+    children_q: Query<&Children>,
+    mut val_input_dropdown_q: Query<(&mut Dropdown<ValTypes>, Entity)>,
+    dropdown_items_q: Query<&DropdownItem<ValTypes>>,
+    mut text_input_q: Query<(&mut TextInput)>,
+    style_q: Query<&Style>,
+) {
+    if let Some(e) = active_style_inspection
+        .entity
+        .filter(|_| active_style_inspection.is_changed())
+    {
+        let style = style_q.get(e).unwrap();
+        style_inputs_q
+            .iter()
+            .for_each(|(val_type_link, val_input_e)| {
+                let val_type = match val_type_link {
+                    ValTypeLink::MarginLeft => get_val_type(style.margin.left),
+                    ValTypeLink::MarginRight => get_val_type(style.margin.right),
+                    ValTypeLink::MarginTop => get_val_type(style.margin.top),
+                    ValTypeLink::MarginBottom => get_val_type(style.margin.bottom),
+                    ValTypeLink::PaddingLeft => get_val_type(style.padding.left),
+                    ValTypeLink::PaddingRight => get_val_type(style.padding.right),
+                    ValTypeLink::PaddingTop => get_val_type(style.padding.top),
+                    ValTypeLink::PaddingBottom => get_val_type(style.padding.bottom),
+                    ValTypeLink::BorderLeft => get_val_type(style.border.left),
+                    ValTypeLink::BorderRight => get_val_type(style.border.right),
+                    ValTypeLink::BorderTop => get_val_type(style.border.top),
+                    ValTypeLink::BorderBottom => get_val_type(style.border.bottom),
+                };
+                children_q.iter_descendants(val_input_e).for_each(|child| {
+                    if let Ok((mut dropdown, dropdown_e)) = val_input_dropdown_q.get_mut(child) {
+                        let selected = children_q.iter_descendants(dropdown_e).find_map(|child| {
+                            if let Ok(dropdown_item) = dropdown_items_q.get(child) {
+                                if val_type == *dropdown_item.value {
+                                    return Some(dropdown_item.clone());
+                                }
+                            } else {
+                            }
+                            None
+                        });
+                        dropdown.selected = selected.unwrap();
+                    }
+                    if let Ok(mut text_input) = text_input_q.get_mut(child) {
+                        let number_val = match val_type_link {
+                            ValTypeLink::MarginLeft => get_number_val(style.margin.left),
+                            ValTypeLink::MarginRight => get_number_val(style.margin.right),
+                            ValTypeLink::MarginTop => get_number_val(style.margin.top),
+                            ValTypeLink::MarginBottom => get_number_val(style.margin.bottom),
+                            ValTypeLink::PaddingLeft => get_number_val(style.padding.left),
+                            ValTypeLink::PaddingRight => get_number_val(style.padding.right),
+                            ValTypeLink::PaddingTop => get_number_val(style.padding.top),
+                            ValTypeLink::PaddingBottom => get_number_val(style.padding.bottom),
+                            ValTypeLink::BorderLeft => get_number_val(style.border.left),
+                            ValTypeLink::BorderRight => get_number_val(style.border.right),
+                            ValTypeLink::BorderTop => get_number_val(style.border.top),
+                            ValTypeLink::BorderBottom => get_number_val(style.border.bottom),
+                        };
+                        text_input.value = format!("{}", number_val);
+                    }
+                });
+            });
+    }
+}
+
+#[derive(Component, Debug)]
 enum ValTypeLink {
     MarginLeft,
+    MarginRight,
+    MarginTop,
+    MarginBottom,
+
+    PaddingLeft,
+    PaddingRight,
+    PaddingTop,
+    PaddingBottom,
+
+    BorderLeft,
+    BorderRight,
+    BorderTop,
+    BorderBottom,
 }
 
 #[derive(Resource, Default)]
@@ -204,6 +521,17 @@ fn update_style_property(
                                 };
                                 match val_input_link {
                                     ValTypeLink::MarginLeft => style.margin.left = val,
+                                    ValTypeLink::MarginRight => style.margin.right = val,
+                                    ValTypeLink::MarginTop => style.margin.top = val,
+                                    ValTypeLink::MarginBottom => style.margin.bottom = val,
+                                    ValTypeLink::PaddingLeft => style.padding.left = val,
+                                    ValTypeLink::PaddingRight => style.padding.right = val,
+                                    ValTypeLink::PaddingTop => style.padding.top = val,
+                                    ValTypeLink::PaddingBottom => style.padding.bottom = val,
+                                    ValTypeLink::BorderLeft => style.border.left = val,
+                                    ValTypeLink::BorderRight => style.border.right = val,
+                                    ValTypeLink::BorderTop => style.border.top = val,
+                                    ValTypeLink::BorderBottom => style.border.bottom = val,
                                 }
                             }
                         }
@@ -213,6 +541,360 @@ fn update_style_property(
         });
 }
 
+fn spacing(commands: &mut Commands, theme: &Theme) -> Entity {
+    let position = commands
+        .spawn((
+            NodeBundle {
+                style: Style {
+                    padding: UiRect::new(Val::Px(12.0), Val::Px(12.0), Val::Px(0.0), Val::Px(12.0)),
+                    flex_direction: FlexDirection::Column,
+                    ..default()
+                },
+                background_color: theme.input.background_color.into(),
+                ..default()
+            },
+            Name::new("Position"),
+        ))
+        .with_children(|builder| {
+            builder.spawn(TextBundle {
+                text: Text::from_section(
+                    "position".to_string(),
+                    TextStyle {
+                        font: theme.font.clone(),
+                        font_size: theme.input.size,
+                        color: theme.input.color,
+                    },
+                ),
+                ..Default::default()
+            });
+            builder
+                .spawn(
+                    (NodeBundle {
+                        style: Style {
+                            flex_direction: FlexDirection::Row,
+                            align_items: AlignItems::Center,
+                            ..default()
+                        },
+                        background_color: theme.input.background_color.into(),
+                        ..default()
+                    }),
+                )
+                .with_children(|builder| {
+                    builder.spawn(TextBundle {
+                        text: Text::from_section(
+                            "0".to_string(),
+                            TextStyle {
+                                font: theme.font.clone(),
+                                font_size: theme.input.size,
+                                color: theme.input.color,
+                            },
+                        ),
+                        ..Default::default()
+                    });
+                    builder
+                        .spawn((
+                            NodeBundle {
+                                style: Style {
+                                    padding: UiRect::new(
+                                        Val::Px(12.0),
+                                        Val::Px(12.0),
+                                        Val::Px(0.0),
+                                        Val::Px(12.0),
+                                    ),
+                                    flex_direction: FlexDirection::Column,
+                                    ..default()
+                                },
+                                background_color: Srgba::hex("73764A").unwrap().into(),
+                                ..default()
+                            },
+                            Name::new("Margin"),
+                        ))
+                        .with_children(|builder| {
+                            builder.spawn(TextBundle {
+                                text: Text::from_section(
+                                    "margin".to_string(),
+                                    TextStyle {
+                                        font: theme.font.clone(),
+                                        font_size: theme.input.size,
+                                        color: Srgba::hex("F8F8FA").unwrap().into(),
+                                    },
+                                ),
+                                ..Default::default()
+                            });
+                            builder
+                                .spawn(
+                                    (NodeBundle {
+                                        style: Style {
+                                            flex_direction: FlexDirection::Row,
+                                            align_items: AlignItems::Center,
+                                            ..default()
+                                        },
+                                        ..default()
+                                    }),
+                                )
+                                .with_children(|builder| {
+                                    builder.spawn(TextBundle {
+                                        text: Text::from_section(
+                                            "2".to_string(),
+                                            TextStyle {
+                                                font: theme.font.clone(),
+                                                font_size: theme.input.size,
+                                                color: Srgba::hex("F8F8FA").unwrap().into(),
+                                            },
+                                        ),
+                                        ..Default::default()
+                                    });
+                                    builder
+                                        .spawn((
+                                            NodeBundle {
+                                                style: Style {
+                                                    flex_direction: FlexDirection::Column,
+                                                    padding: UiRect::new(
+                                                        Val::Px(12.0),
+                                                        Val::Px(12.0),
+                                                        Val::Px(0.0),
+                                                        Val::Px(12.0),
+                                                    ),
+                                                    ..default()
+                                                },
+                                                background_color: Srgba::hex("38383D")
+                                                    .unwrap()
+                                                    .into(),
+                                                ..default()
+                                            },
+                                            Name::new("Border"),
+                                        ))
+                                        .with_children(|builder| {
+                                            builder.spawn(TextBundle {
+                                                style: Style { ..default() },
+                                                text: Text::from_section(
+                                                    "border".to_string(),
+                                                    TextStyle {
+                                                        font: theme.font.clone(),
+                                                        font_size: theme.input.size,
+                                                        color: Srgba::hex("F8F8FA").unwrap().into(),
+                                                    },
+                                                ),
+                                                ..Default::default()
+                                            });
+                                            builder
+                                                .spawn(
+                                                    (NodeBundle {
+                                                        style: Style {
+                                                            flex_direction: FlexDirection::Row,
+                                                            align_items: AlignItems::Center,
+                                                            ..default()
+                                                        },
+                                                        ..default()
+                                                    }),
+                                                )
+                                                .with_children(|builder| {
+                                                    builder.spawn(TextBundle {
+                                                        text: Text::from_section(
+                                                            "4".to_string(),
+                                                            TextStyle {
+                                                                font: theme.font.clone(),
+                                                                font_size: theme.input.size,
+                                                                color: Srgba::hex("F8F8FA")
+                                                                    .unwrap()
+                                                                    .into(),
+                                                            },
+                                                        ),
+                                                        ..Default::default()
+                                                    });
+                                                    builder
+                                                        .spawn((
+                                                            NodeBundle {
+                                                                style: Style {
+                                                                    padding: UiRect::new(
+                                                                        Val::Px(12.0),
+                                                                        Val::Px(12.0),
+                                                                        Val::Px(0.0),
+                                                                        Val::Px(12.0),
+                                                                    ),
+                                                                    flex_direction:
+                                                                        FlexDirection::Column,
+                                                                    ..default()
+                                                                },
+                                                                background_color: Srgba::hex(
+                                                                    "6657A6",
+                                                                )
+                                                                .unwrap()
+                                                                .into(),
+                                                                ..default()
+                                                            },
+                                                            Name::new("Padding"),
+                                                        ))
+                                                        .with_children(|builder| {
+                                                            builder.spawn(TextBundle {
+                                                                text: Text::from_section(
+                                                                    "padding".to_string(),
+                                                                    TextStyle {
+                                                                        font: theme.font.clone(),
+                                                                        font_size: theme.input.size,
+                                                                        color: Srgba::hex("F8F8FA")
+                                                                            .unwrap()
+                                                                            .into(),
+                                                                    },
+                                                                ),
+                                                                ..Default::default()
+                                                            });
+                                                            builder
+                                                                .spawn(
+                                                                    (NodeBundle {
+                                                                        style: Style {
+                                                                            flex_direction:
+                                                                                FlexDirection::Row,
+                                                                            align_items:
+                                                                                AlignItems::Center,
+                                                                            ..default()
+                                                                        },
+                                                                        ..default()
+                                                                    }),
+                                                                )
+                                                                .with_children(|builder| {
+                                                                    builder.spawn(TextBundle {
+                                                                        text: Text::from_section(
+                                                                            "6".to_string(),
+                                                                            TextStyle {
+                                                                                font: theme
+                                                                                    .font
+                                                                                    .clone(),
+                                                                                font_size: theme
+                                                                                    .input
+                                                                                    .size,
+                                                                                color: Srgba::hex(
+                                                                                    "F8F8FA",
+                                                                                )
+                                                                                .unwrap()
+                                                                                .into(),
+                                                                            },
+                                                                        ),
+                                                                        ..Default::default()
+                                                                    });
+                                                                    builder
+                                                                .spawn((
+                                                                    NodeBundle {
+                                                                        style: Style {
+                                                                            padding: UiRect::new(
+                                                                                Val::Px(12.0),
+                                                                                Val::Px(12.0),
+                                                                                Val::Px(12.0),
+                                                                                Val::Px(12.0),
+                                                                            ),
+                                                                            border:UiRect::all(Val::Px(1.0) ),
+                                                                            ..default()
+                                                                        },
+                                                                        border_color: BLACK.into(),
+                                                                        background_color:
+                                                                            Srgba::hex("407AA4")
+                                                                                .unwrap()
+                                                                                .into(),
+                                                                        ..default()
+                                                                    },
+                                                                    Name::new("NodeSize"),
+                                                                ))
+                                                                .with_children(|builder| {
+                                                                    builder.spawn(TextBundle {
+                                                                        style: Style {
+                                                                            ..default()
+                                                                        },
+                                                                        text: Text::from_section(
+                                                                            "1000x370".to_string(),
+                                                                            TextStyle {
+                                                                                font: theme
+                                                                                    .font
+                                                                                    .clone(),
+                                                                                font_size: theme
+                                                                                    .input
+                                                                                    .size,
+                                                                                color: Srgba::hex(
+                                                                                    "F8F8FA",
+                                                                                )
+                                                                                .unwrap()
+                                                                                .into(),
+                                                                            },
+                                                                        ),
+                                                                        ..Default::default()
+                                                                    });
+                                                                });
+                                                                    builder.spawn(TextBundle {
+                                                                        background_color:
+                                                                            Srgba::hex("6657A6")
+                                                                                .unwrap()
+                                                                                .into(),
+                                                                        text: Text::from_section(
+                                                                            "7".to_string(),
+                                                                            TextStyle {
+                                                                                font: theme
+                                                                                    .font
+                                                                                    .clone(),
+                                                                                font_size: theme
+                                                                                    .input
+                                                                                    .size,
+                                                                                color: Srgba::hex(
+                                                                                    "F8F8FA",
+                                                                                )
+                                                                                .unwrap()
+                                                                                .into(),
+                                                                            },
+                                                                        ),
+                                                                        ..Default::default()
+                                                                    });
+                                                                });
+                                                        });
+                                                    builder.spawn(TextBundle {
+                                                        text: Text::from_section(
+                                                            "5".to_string(),
+                                                            TextStyle {
+                                                                font: theme.font.clone(),
+                                                                font_size: theme.input.size,
+                                                                color: Srgba::hex("F8F8FA")
+                                                                    .unwrap()
+                                                                    .into(),
+                                                            },
+                                                        ),
+                                                        ..Default::default()
+                                                    });
+                                                });
+                                        });
+                                    builder.spawn(TextBundle {
+                                        text: Text::from_section(
+                                            "3".to_string(),
+                                            TextStyle {
+                                                font: theme.font.clone(),
+                                                font_size: theme.input.size,
+                                                color: Srgba::hex("F8F8FA").unwrap().into(),
+                                            },
+                                        ),
+                                        ..Default::default()
+                                    });
+                                });
+                        });
+                    builder.spawn(TextBundle {
+                        text: Text::from_section(
+                            "1".to_string(),
+                            TextStyle {
+                                font: theme.font.clone(),
+                                font_size: theme.input.size,
+                                color: theme.input.color,
+                            },
+                        ),
+                        ..Default::default()
+                    });
+                });
+        })
+        .id();
+    let mut container = commands.spawn((
+        NodeBundle {
+            style: Style { ..default() },
+            ..default()
+        },
+        Name::new("SpacingContainer"),
+    ));
+    container.push_children(&[position]);
+    container.id()
+}
 fn val_input_width_fixer(
     val_input_q: Query<(Entity, &ValInput)>,
     mut val_input_dropdown_q: Query<
@@ -235,7 +917,7 @@ fn val_input_width_fixer(
                 .find_map(|child| {
                     if let Ok((text_input, mut text_input_s)) = text_input_q.get_mut(child) {
                         if *dropdown.selected.value == ValTypes::Auto {
-                            dropdown_s.width = Val::Px(54.0);
+                            dropdown_s.width = Val::Px(55.0);
                             text_input_s.width = Val::Px(0.0);
                         } else {
                             dropdown_s.width = Val::Px(30.0);
@@ -255,11 +937,11 @@ struct ValInput {}
 
 #[derive(Component)]
 struct ValInputDropdown {}
-pub fn create_val_thing<T: PartialEq + Send + Sync + Clone + 'static>(
+pub fn create_val_thing(
     commands: &mut Commands,
     icons: &Icons,
     theme: &Theme,
-    dropdown: Dropdown<T>,
+    dropdown: Dropdown<ValTypes>,
     linked_to: ValTypeLink,
 ) -> Entity {
     let open = dropdown.open;
@@ -305,9 +987,16 @@ pub fn create_val_thing<T: PartialEq + Send + Sync + Clone + 'static>(
                     align_items: AlignItems::Center,
                     justify_content: JustifyContent::SpaceBetween,
                     padding: UiRect::horizontal(Val::Px(6.0)),
-
+                    border: UiRect::new(Val::Px(0.0), Val::Px(1.0), Val::Px(1.0), Val::Px(1.0)),
                     ..Default::default()
                 },
+                border_radius: BorderRadius::new(
+                    Val::Px(0.0),
+                    Val::Px(4.0),
+                    Val::Px(4.0),
+                    Val::Px(0.0),
+                ),
+                border_color: BLACK.into(),
                 background_color: BackgroundColor(theme.input.background_color),
                 ..Default::default()
             },
@@ -343,6 +1032,8 @@ pub fn create_val_thing<T: PartialEq + Send + Sync + Clone + 'static>(
                 .spawn((
                     DropdownBox {},
                     NodeBundle {
+                        z_index: ZIndex::Global(1000),
+                        focus_policy: FocusPolicy::Block,
                         style: Style {
                             position_type: PositionType::Absolute,
                             top: Val::Px(22.0),
@@ -417,8 +1108,16 @@ fn create_input(commands: &mut Commands, theme: &Theme) -> Entity {
                     width: Val::Px(120.0),
                     justify_content: JustifyContent::FlexStart,
                     align_items: AlignItems::Center,
+                    border: UiRect::new(Val::Px(1.0), Val::Px(0.0), Val::Px(1.0), Val::Px(1.0)),
                     ..Default::default()
                 },
+                border_radius: BorderRadius::new(
+                    Val::Px(4.0),
+                    Val::Px(0.0),
+                    Val::Px(0.0),
+                    Val::Px(4.0),
+                ),
+                border_color: BLACK.into(),
                 background_color: theme.input.background_color.into(),
                 ..Default::default()
             },

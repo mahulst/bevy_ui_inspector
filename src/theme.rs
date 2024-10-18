@@ -1,7 +1,8 @@
-use bevy::prelude::*;
 use bevy::color::palettes::tailwind::*;
+use bevy::prelude::*;
 #[derive(Resource)]
 pub struct Theme {
+    pub background: Color,
     pub input: ThemeItem,
     pub font: Handle<Font>,
 }
@@ -21,6 +22,7 @@ const BLUE: Color = Color::Srgba(BLUE_900);
 impl Default for Theme {
     fn default() -> Self {
         Self {
+            background: WHITE,
             input: ThemeItem {
                 color: DARK,
                 background_color: WHITE,

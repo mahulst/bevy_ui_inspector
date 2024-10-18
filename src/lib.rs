@@ -27,7 +27,7 @@ struct PreviousElementHighlighted {
     border_width: UiRect,
 }
 
-#[derive(Default, PartialEq, Eq, Clone)]
+#[derive(Default, PartialEq, Eq, Clone, Debug)]
 pub enum ValTypes {
     #[default]
     Auto,
