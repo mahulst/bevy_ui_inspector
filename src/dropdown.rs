@@ -5,6 +5,11 @@ impl Plugin for DropdownPlugin {
     fn build(&self, app: &mut App) {
         register_dropdown_systems::<usize>(app);
         register_dropdown_systems::<Display>(app);
+        register_dropdown_systems::<PositionType>(app);
+        register_dropdown_systems::<FlexWrap>(app);
+        register_dropdown_systems::<JustifyContent>(app);
+        register_dropdown_systems::<FlexDirection>(app);
+        register_dropdown_systems::<AlignItems>(app);
         register_dropdown_systems::<ValTypes>(app);
     }
 }

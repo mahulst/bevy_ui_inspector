@@ -1,3 +1,5 @@
+use std::clone;
+
 use bevy::color::palettes::css::BLACK;
 use bevy::ui::FocusPolicy;
 use bevy::{color::palettes::tailwind::*, prelude::*, window::WindowResolution};
@@ -27,6 +29,7 @@ fn main() {
         .add_systems(
             Update,
             ((
+                update_spacing_markers,
                 update_style_panel,
                 val_input_width_fixer,
                 update_text_input,
@@ -694,7 +697,6 @@ fn update_style_property(
                 children_q.iter_descendants(val_input_e).for_each(|child| {
                     if let Ok((text_input, text_input_e)) = text_input_q.get(child) {
                         if text_input.is_changed() || dropdown.is_changed() {
-                            println!("one changed ");
                             if let Some(mut style) = active_style_inspection
                                 .entity
                                 .and_then(|e| style_q.get_mut(e).ok())
@@ -736,14 +738,94 @@ fn update_style_property(
             }
         });
 }
+fn update_spacing_markers(
+    mut text_q: Query<&mut Text>,
+    style_q: Query<(&Style, &Node, &GlobalTransform)>,
+    active_style_inspection: Res<ActiveStyleInspection>,
+    spacing_markers_q: Query<(&SpacingMarker, &SpacingMarkerPosition, Entity)>,
+    dimension_markers_q: Query<Entity, With<SpacingDimensionsMarker>>,
+) {
+    if let Some(e) = active_style_inspection.entity
+    // .filter(|_| active_style_inspection.is_changed())
+    {
+        let (style, node, tf) = style_q.get(e).unwrap();
+        let dimensions = node.size();
+        let pos = node.logical_rect(tf);
+
+        if let Some(mut text) = dimension_markers_q
+            .get_single()
+            .ok()
+            .and_then(|marker_e| text_q.get_mut(marker_e).ok())
+        {
+            text.sections[0].value = format!("{}x{}", dimensions.x, dimensions.y);
+        }
+        spacing_markers_q
+            .iter()
+            .for_each(|(spacing_type, position, e)| {
+                let mut text = text_q.get_mut(e).unwrap();
+                match (spacing_type, position) {
+                    (SpacingMarker::Position, SpacingMarkerPosition::Left) => {
+                        text.sections[0].value = format!("{}", get_number_val(style.left));
+                    }
+                    (SpacingMarker::Position, SpacingMarkerPosition::Right) => {
+                        text.sections[0].value = format!("{}", get_number_val(style.right));
+                    }
+                    (SpacingMarker::Position, SpacingMarkerPosition::Top) => {
+                        text.sections[0].value = format!("{}", get_number_val(style.top));
+                    }
+                    (SpacingMarker::Position, SpacingMarkerPosition::Bottom) => {
+                        text.sections[0].value = format!("{}", get_number_val(style.bottom));
+                    }
+
+                    (SpacingMarker::Margin, SpacingMarkerPosition::Left) => {
+                        text.sections[0].value = format!("{}", get_number_val(style.margin.left));
+                    }
+                    (SpacingMarker::Margin, SpacingMarkerPosition::Right) => {
+                        text.sections[0].value = format!("{}", get_number_val(style.margin.right));
+                    }
+                    (SpacingMarker::Margin, SpacingMarkerPosition::Top) => {
+                        text.sections[0].value = format!("{}", get_number_val(style.margin.top));
+                    }
+                    (SpacingMarker::Margin, SpacingMarkerPosition::Bottom) => {
+                        text.sections[0].value = format!("{}", get_number_val(style.margin.bottom));
+                    }
+                    (SpacingMarker::Border, SpacingMarkerPosition::Left) => {
+                        text.sections[0].value = format!("{}", get_number_val(style.border.left));
+                    }
+                    (SpacingMarker::Border, SpacingMarkerPosition::Right) => {
+                        text.sections[0].value = format!("{}", get_number_val(style.border.right));
+                    }
+                    (SpacingMarker::Border, SpacingMarkerPosition::Top) => {
+                        text.sections[0].value = format!("{}", get_number_val(style.border.top));
+                    }
+                    (SpacingMarker::Border, SpacingMarkerPosition::Bottom) => {
+                        text.sections[0].value = format!("{}", get_number_val(style.border.bottom));
+                    }
+                    (SpacingMarker::Padding, SpacingMarkerPosition::Left) => {
+                        text.sections[0].value = format!("{}", get_number_val(style.padding.left));
+                    }
+                    (SpacingMarker::Padding, SpacingMarkerPosition::Right) => {
+                        text.sections[0].value = format!("{}", get_number_val(style.padding.right));
+                    }
+                    (SpacingMarker::Padding, SpacingMarkerPosition::Top) => {
+                        text.sections[0].value = format!("{}", get_number_val(style.padding.top));
+                    }
+                    (SpacingMarker::Padding, SpacingMarkerPosition::Bottom) => {
+                        text.sections[0].value = format!("{}", get_number_val(style.padding.bottom));
+                    }
+                };
+            });
+    }
+}
 const SPACING_MARGIN: f32 = 12.0;
 const SPACING_MARGIN_Y: f32 = 6.0;
-fn thing(
+fn created_nested_spacing_indicator(
     type_of_spacing: &str,
     builder: &mut Commands,
     theme: &Theme,
     box_color: &str,
     child: Option<Entity>,
+    marker: SpacingMarker,
 ) -> Entity {
     let left = builder
         .spawn((
@@ -762,6 +844,8 @@ fn thing(
                 ),
                 ..Default::default()
             },
+            marker.clone(),
+            SpacingMarkerPosition::Left,
             Name::new("Left"),
         ))
         .id();
@@ -782,6 +866,8 @@ fn thing(
                 ),
                 ..Default::default()
             },
+            marker.clone(),
+            SpacingMarkerPosition::Right,
             Name::new("Right"),
         ))
         .id();
@@ -848,6 +934,8 @@ fn thing(
                             ),
                             ..Default::default()
                         },
+                        marker.clone(),
+                        SpacingMarkerPosition::Top,
                         Name::new("Top"),
                     ));
                 });
@@ -881,11 +969,29 @@ fn thing(
                     ),
                     ..Default::default()
                 },
+                marker.clone(),
+                SpacingMarkerPosition::Bottom,
                 Name::new("Bottom"),
             ));
         })
         .id()
 }
+#[derive(Component, Clone)]
+enum SpacingMarker {
+    Position,
+    Margin,
+    Border,
+    Padding,
+}
+#[derive(Component)]
+enum SpacingMarkerPosition {
+    Left,
+    Right,
+    Top,
+    Bottom,
+}
+#[derive(Component)]
+struct SpacingDimensionsMarker;
 fn spacing(commands: &mut Commands, theme: &Theme) -> Entity {
     let node_size = commands
         .spawn((
@@ -907,25 +1013,56 @@ fn spacing(commands: &mut Commands, theme: &Theme) -> Entity {
             Name::new("NodeSize"),
         ))
         .with_children(|builder| {
-            builder.spawn(TextBundle {
-                style: Style { ..default() },
-                text: Text::from_section(
-                    "1000x370".to_string(),
-                    TextStyle {
-                        font: theme.font.clone(),
-                        font_size: theme.input.size,
-                        color: Srgba::hex("F8F8FA").unwrap().into(),
-                    },
-                ),
-                ..Default::default()
-            });
+            builder.spawn((
+                TextBundle {
+                    style: Style { ..default() },
+                    text: Text::from_section(
+                        "1000x370".to_string(),
+                        TextStyle {
+                            font: theme.font.clone(),
+                            font_size: theme.input.size,
+                            color: Srgba::hex("F8F8FA").unwrap().into(),
+                        },
+                    ),
+                    ..Default::default()
+                },
+                SpacingDimensionsMarker,
+            ));
         })
         .id();
 
-    let padding = thing("padding", commands, theme, "6657A6", node_size.into());
-    let border = thing("border", commands, theme, "38383D", padding.into());
-    let margin = thing("margin", commands, theme, "73764A", border.into());
-    let position = thing("position", commands, theme, "222222", margin.into());
+    let padding = created_nested_spacing_indicator(
+        "padding",
+        commands,
+        theme,
+        "6657A6",
+        node_size.into(),
+        SpacingMarker::Padding,
+    );
+    let border = created_nested_spacing_indicator(
+        "border",
+        commands,
+        theme,
+        "38383D",
+        padding.into(),
+        SpacingMarker::Border,
+    );
+    let margin = created_nested_spacing_indicator(
+        "margin",
+        commands,
+        theme,
+        "73764A",
+        border.into(),
+        SpacingMarker::Margin,
+    );
+    let position = created_nested_spacing_indicator(
+        "position",
+        commands,
+        theme,
+        "222222",
+        margin.into(),
+        SpacingMarker::Position,
+    );
 
     let mut container = commands.spawn((
         NodeBundle {
