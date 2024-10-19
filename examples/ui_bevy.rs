@@ -225,6 +225,137 @@ fn spawn_layout(
         },
         ValTypeLink::BorderBottom,
     );
+    let width = create_val_thing(
+        &mut commands,
+        &icons,
+        &theme,
+        Dropdown {
+            open: false,
+            selected: DropdownItem {
+                label: "px".to_string(),
+                value: ValTypes::Px.into(),
+            },
+        },
+        ValTypeLink::Width,
+    );
+    let min_width = create_val_thing(
+        &mut commands,
+        &icons,
+        &theme,
+        Dropdown {
+            open: false,
+            selected: DropdownItem {
+                label: "px".to_string(),
+                value: ValTypes::Px.into(),
+            },
+        },
+        ValTypeLink::MinWidth,
+    );
+    let max_width = create_val_thing(
+        &mut commands,
+        &icons,
+        &theme,
+        Dropdown {
+            open: false,
+            selected: DropdownItem {
+                label: "px".to_string(),
+                value: ValTypes::Px.into(),
+            },
+        },
+        ValTypeLink::MaxWidth,
+    );
+    let height = create_val_thing(
+        &mut commands,
+        &icons,
+        &theme,
+        Dropdown {
+            open: false,
+            selected: DropdownItem {
+                label: "px".to_string(),
+                value: ValTypes::Px.into(),
+            },
+        },
+        ValTypeLink::Height,
+    );
+    let min_height = create_val_thing(
+        &mut commands,
+        &icons,
+        &theme,
+        Dropdown {
+            open: false,
+            selected: DropdownItem {
+                label: "px".to_string(),
+                value: ValTypes::Px.into(),
+            },
+        },
+        ValTypeLink::MinHeight,
+    );
+    let max_height = create_val_thing(
+        &mut commands,
+        &icons,
+        &theme,
+        Dropdown {
+            open: false,
+            selected: DropdownItem {
+                label: "px".to_string(),
+                value: ValTypes::Px.into(),
+            },
+        },
+        ValTypeLink::MaxHeight,
+    );
+    let width_title = commands
+        .spawn(TextBundle {
+            text: Text::from_section(
+                "width".to_string(),
+                TextStyle {
+                    font: theme.font.clone(),
+                    font_size: theme.input.size,
+                    color: theme.input.color,
+                },
+            ),
+            ..Default::default()
+        })
+        .id();
+    let height_title = commands
+        .spawn(TextBundle {
+            text: Text::from_section(
+                "height".to_string(),
+                TextStyle {
+                    font: theme.font.clone(),
+                    font_size: theme.input.size,
+                    color: theme.input.color,
+                },
+            ),
+            ..Default::default()
+        })
+        .id();
+    let min_title = commands
+        .spawn(TextBundle {
+            text: Text::from_section(
+                "min".to_string(),
+                TextStyle {
+                    font: theme.font.clone(),
+                    font_size: theme.input.size,
+                    color: theme.input.color,
+                },
+            ),
+            ..Default::default()
+        })
+        .id();
+    let max_title = commands
+        .spawn(TextBundle {
+            text: Text::from_section(
+                "max".to_string(),
+                TextStyle {
+                    font: theme.font.clone(),
+                    font_size: theme.input.size,
+                    color: theme.input.color,
+                },
+            ),
+            ..Default::default()
+        })
+        .id();
+
     let margin_title = commands
         .spawn(TextBundle {
             text: Text::from_section(
@@ -317,6 +448,8 @@ fn spawn_layout(
         })
         .id();
     let empty = commands.spawn(NodeBundle::default()).id();
+    let empty2 = commands.spawn(NodeBundle::default()).id();
+    let empty3 = commands.spawn(NodeBundle::default()).id();
     let mut dd_container = commands.spawn((
         NodeBundle {
             background_color: theme.background.into(),
@@ -343,7 +476,7 @@ fn spawn_layout(
                 style: Style {
                     display: Display::Grid,
                     grid_template_columns: RepeatedGridTrack::min_content(5),
-                    grid_template_rows: RepeatedGridTrack::min_content(3),
+                    grid_template_rows: RepeatedGridTrack::min_content(4),
                     row_gap: Val::Px(12.0),
                     column_gap: Val::Px(12.0),
                     ..default()
@@ -353,26 +486,60 @@ fn spawn_layout(
             Name::new("UiRectGrid"),
         ));
         ui_rect_grid.push_children(&[
+            // title
             empty,
             left_title,
             right_title,
             top_title,
             bottom_title,
+            //margin
             margin_title,
             margin_left,
             margin_right,
             margin_top,
             margin_bottom,
+            //padding
             padding_title,
             padding_left,
             padding_right,
             padding_top,
             padding_bottom,
+            //border
             border_title,
             border_left,
             border_right,
             border_top,
             border_bottom,
+        ]);
+        let mut ui_rect_grid = builder.spawn((
+            NodeBundle {
+                style: Style {
+                    display: Display::Grid,
+                    grid_template_columns: RepeatedGridTrack::min_content(4),
+                    grid_template_rows: RepeatedGridTrack::min_content(3),
+                    row_gap: Val::Px(12.0),
+                    column_gap: Val::Px(12.0),
+                    ..default()
+                },
+                ..default()
+            },
+            Name::new("Dimensions"),
+        ));
+        ui_rect_grid.push_children(&[
+            empty2,
+            empty3,
+            min_title,
+            max_title,
+            //width
+            width_title,
+            width,
+            min_width,
+            max_width,
+            //height
+            height_title,
+            height,
+            min_height,
+            max_height,
         ]);
     });
     active_style_inspection.entity = entity_id.into();
@@ -429,6 +596,12 @@ fn update_style_panel(
                     ValTypeLink::BorderRight => get_val_type(style.border.right),
                     ValTypeLink::BorderTop => get_val_type(style.border.top),
                     ValTypeLink::BorderBottom => get_val_type(style.border.bottom),
+                    ValTypeLink::Width => get_val_type(style.width),
+                    ValTypeLink::MinWidth => get_val_type(style.min_width),
+                    ValTypeLink::MaxWidth => get_val_type(style.max_width),
+                    ValTypeLink::Height => get_val_type(style.height),
+                    ValTypeLink::MinHeight => get_val_type(style.min_height),
+                    ValTypeLink::MaxHeight => get_val_type(style.max_height),
                 };
                 children_q.iter_descendants(val_input_e).for_each(|child| {
                     if let Ok((mut dropdown, dropdown_e)) = val_input_dropdown_q.get_mut(child) {
@@ -457,6 +630,12 @@ fn update_style_panel(
                             ValTypeLink::BorderRight => get_number_val(style.border.right),
                             ValTypeLink::BorderTop => get_number_val(style.border.top),
                             ValTypeLink::BorderBottom => get_number_val(style.border.bottom),
+                            ValTypeLink::Width => get_number_val(style.width),
+                            ValTypeLink::MinWidth => get_number_val(style.min_width),
+                            ValTypeLink::MaxWidth => get_number_val(style.max_width),
+                            ValTypeLink::Height => get_number_val(style.height),
+                            ValTypeLink::MinHeight => get_number_val(style.min_height),
+                            ValTypeLink::MaxHeight => get_number_val(style.max_height),
                         };
                         text_input.value = format!("{}", number_val);
                     }
@@ -481,6 +660,14 @@ enum ValTypeLink {
     BorderRight,
     BorderTop,
     BorderBottom,
+
+    Width,
+    MinWidth,
+    MaxWidth,
+
+    Height,
+    MinHeight,
+    MaxHeight,
 }
 
 #[derive(Resource, Default)]
@@ -535,6 +722,12 @@ fn update_style_property(
                                     ValTypeLink::BorderRight => style.border.right = val,
                                     ValTypeLink::BorderTop => style.border.top = val,
                                     ValTypeLink::BorderBottom => style.border.bottom = val,
+                                    ValTypeLink::Width => style.width = val,
+                                    ValTypeLink::MinWidth => style.min_width = val,
+                                    ValTypeLink::MaxWidth => style.max_width = val,
+                                    ValTypeLink::Height => style.height = val,
+                                    ValTypeLink::MinHeight => style.min_height = val,
+                                    ValTypeLink::MaxHeight => style.max_height = val,
                                 }
                             }
                         }
