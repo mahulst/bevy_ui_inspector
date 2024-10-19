@@ -168,7 +168,6 @@ pub fn create_dropdown<T: PartialEq + Send + Sync + Clone + 'static>(
                     align_items: AlignItems::Center,
                     justify_content: JustifyContent::SpaceBetween,
                     padding: UiRect::horizontal(Val::Px(6.0)),
-
                     ..Default::default()
                 },
                 background_color: BackgroundColor(theme.input.background_color),

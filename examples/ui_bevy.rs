@@ -47,7 +47,7 @@ fn spawn_layout(
     mut theme: ResMut<Theme>,
     mut active_style_inspection: ResMut<ActiveStyleInspection>,
 ) {
-    let font: Handle<Font> = asset_server.load("fonts/FiraSans-Bold.ttf");
+    let font: Handle<Font> = asset_server.load("fonts/SourceCodePro-Regular.ttf");
     theme.font = font;
     commands.spawn(Camera2dBundle::default());
     let position_thing = spacing(&mut commands, &theme);
@@ -322,13 +322,14 @@ fn spawn_layout(
             background_color: theme.background.into(),
             style: Style {
                 flex_direction: FlexDirection::Column,
+                align_items: AlignItems::FlexEnd,
                 position_type: PositionType::Absolute,
-
+                padding: UiRect::all(Val::Px(12.0)),
                 row_gap: Val::Px(12.0),
                 width: Val::Px(500.0),
                 height: Val::Percent(100.0),
-                right: Val::Px(12.0),
-                top: Val::Px(12.0),
+                right: Val::Px(0.0),
+                top: Val::Px(0.0),
                 ..default()
             },
             ..default()
@@ -343,6 +344,8 @@ fn spawn_layout(
                     display: Display::Grid,
                     grid_template_columns: RepeatedGridTrack::min_content(5),
                     grid_template_rows: RepeatedGridTrack::min_content(3),
+                    row_gap: Val::Px(12.0),
+                    column_gap: Val::Px(12.0),
                     ..default()
                 },
                 ..default()
@@ -540,354 +543,204 @@ fn update_style_property(
             }
         });
 }
-
-fn spacing(commands: &mut Commands, theme: &Theme) -> Entity {
-    let position = commands
+const SPACING_MARGIN: f32 = 12.0;
+const SPACING_MARGIN_Y: f32 = 6.0;
+fn thing(
+    type_of_spacing: &str,
+    builder: &mut Commands,
+    theme: &Theme,
+    box_color: &str,
+    child: Option<Entity>,
+) -> Entity {
+    let left = builder
         .spawn((
-            NodeBundle {
+            TextBundle {
                 style: Style {
-                    padding: UiRect::new(Val::Px(12.0), Val::Px(12.0), Val::Px(0.0), Val::Px(12.0)),
-                    flex_direction: FlexDirection::Column,
+                    margin: UiRect::right(Val::Px(SPACING_MARGIN)),
                     ..default()
                 },
-                background_color: theme.input.background_color.into(),
-                ..default()
-            },
-            Name::new("Position"),
-        ))
-        .with_children(|builder| {
-            builder.spawn(TextBundle {
                 text: Text::from_section(
-                    "position".to_string(),
+                    "6".to_string(),
                     TextStyle {
                         font: theme.font.clone(),
                         font_size: theme.input.size,
-                        color: theme.input.color,
+                        color: Srgba::hex("F8F8FA").unwrap().into(),
+                    },
+                ),
+                ..Default::default()
+            },
+            Name::new("Left"),
+        ))
+        .id();
+    let right = builder
+        .spawn((
+            TextBundle {
+                style: Style {
+                    margin: UiRect::left(Val::Px(SPACING_MARGIN)),
+                    ..default()
+                },
+                text: Text::from_section(
+                    "7".to_string(),
+                    TextStyle {
+                        font: theme.font.clone(),
+                        font_size: theme.input.size,
+                        color: Srgba::hex("F8F8FA").unwrap().into(),
+                    },
+                ),
+                ..Default::default()
+            },
+            Name::new("Right"),
+        ))
+        .id();
+    builder
+        .spawn((
+            NodeBundle {
+                style: Style {
+                    padding: UiRect::new(
+                        Val::Px(SPACING_MARGIN),
+                        Val::Px(SPACING_MARGIN),
+                        Val::Px(0.0),
+                        Val::Px(0.0),
+                    ),
+                    flex_direction: FlexDirection::Column,
+                    ..default()
+                },
+                background_color: Srgba::hex(box_color).unwrap().into(),
+                ..default()
+            },
+            Name::new(type_of_spacing.to_string()),
+        ))
+        .with_children(|builder| {
+            builder
+                .spawn(NodeBundle {
+                    style: Style {
+                        position_type: PositionType::Relative,
+                        flex_direction: FlexDirection::Row,
+                        justify_content: JustifyContent::Center,
+                        ..default()
+                    },
+                    ..default()
+                })
+                .with_children(|builder| {
+                    builder.spawn(TextBundle {
+                        style: Style {
+                            position_type: PositionType::Absolute,
+                            left: Val::Px(0.0),
+                            ..default()
+                        },
+                        text: Text::from_section(
+                            type_of_spacing.to_string(),
+                            TextStyle {
+                                font: theme.font.clone(),
+                                font_size: theme.input.size,
+                                color: Srgba::hex("F8F8FA").unwrap().into(),
+                            },
+                        ),
+                        ..Default::default()
+                    });
+
+                    builder.spawn((
+                        TextBundle {
+                            style: Style {
+                                margin: UiRect::vertical(Val::Px(SPACING_MARGIN_Y)),
+                                ..default()
+                            },
+                            text: Text::from_section(
+                                "8".to_string(),
+                                TextStyle {
+                                    font: theme.font.clone(),
+                                    font_size: theme.input.size,
+                                    color: Srgba::hex("F8F8FA").unwrap().into(),
+                                },
+                            ),
+                            ..Default::default()
+                        },
+                        Name::new("Top"),
+                    ));
+                });
+            let mut wrapper = builder.spawn(NodeBundle {
+                style: Style {
+                    flex_direction: FlexDirection::Row,
+                    align_items: AlignItems::Center,
+                    ..default()
+                },
+                ..default()
+            });
+
+            if let Some(e) = child {
+                wrapper.push_children(&[left, e, right]);
+            }
+
+            builder.spawn((
+                TextBundle {
+                    style: Style {
+                        align_self: AlignSelf::Center,
+                        margin: UiRect::vertical(Val::Px(SPACING_MARGIN_Y)),
+                        ..default()
+                    },
+                    text: Text::from_section(
+                        "9".to_string(),
+                        TextStyle {
+                            font: theme.font.clone(),
+                            font_size: theme.input.size,
+                            color: Srgba::hex("F8F8FA").unwrap().into(),
+                        },
+                    ),
+                    ..Default::default()
+                },
+                Name::new("Bottom"),
+            ));
+        })
+        .id()
+}
+fn spacing(commands: &mut Commands, theme: &Theme) -> Entity {
+    let node_size = commands
+        .spawn((
+            NodeBundle {
+                style: Style {
+                    padding: UiRect::new(
+                        Val::Px(12.0),
+                        Val::Px(12.0),
+                        Val::Px(12.0),
+                        Val::Px(12.0),
+                    ),
+                    border: UiRect::all(Val::Px(1.0)),
+                    ..default()
+                },
+                border_color: BLACK.into(),
+                background_color: Srgba::hex("407AA4").unwrap().into(),
+                ..default()
+            },
+            Name::new("NodeSize"),
+        ))
+        .with_children(|builder| {
+            builder.spawn(TextBundle {
+                style: Style { ..default() },
+                text: Text::from_section(
+                    "1000x370".to_string(),
+                    TextStyle {
+                        font: theme.font.clone(),
+                        font_size: theme.input.size,
+                        color: Srgba::hex("F8F8FA").unwrap().into(),
                     },
                 ),
                 ..Default::default()
             });
-            builder
-                .spawn(
-                    (NodeBundle {
-                        style: Style {
-                            flex_direction: FlexDirection::Row,
-                            align_items: AlignItems::Center,
-                            ..default()
-                        },
-                        background_color: theme.input.background_color.into(),
-                        ..default()
-                    }),
-                )
-                .with_children(|builder| {
-                    builder.spawn(TextBundle {
-                        text: Text::from_section(
-                            "0".to_string(),
-                            TextStyle {
-                                font: theme.font.clone(),
-                                font_size: theme.input.size,
-                                color: theme.input.color,
-                            },
-                        ),
-                        ..Default::default()
-                    });
-                    builder
-                        .spawn((
-                            NodeBundle {
-                                style: Style {
-                                    padding: UiRect::new(
-                                        Val::Px(12.0),
-                                        Val::Px(12.0),
-                                        Val::Px(0.0),
-                                        Val::Px(12.0),
-                                    ),
-                                    flex_direction: FlexDirection::Column,
-                                    ..default()
-                                },
-                                background_color: Srgba::hex("73764A").unwrap().into(),
-                                ..default()
-                            },
-                            Name::new("Margin"),
-                        ))
-                        .with_children(|builder| {
-                            builder.spawn(TextBundle {
-                                text: Text::from_section(
-                                    "margin".to_string(),
-                                    TextStyle {
-                                        font: theme.font.clone(),
-                                        font_size: theme.input.size,
-                                        color: Srgba::hex("F8F8FA").unwrap().into(),
-                                    },
-                                ),
-                                ..Default::default()
-                            });
-                            builder
-                                .spawn(
-                                    (NodeBundle {
-                                        style: Style {
-                                            flex_direction: FlexDirection::Row,
-                                            align_items: AlignItems::Center,
-                                            ..default()
-                                        },
-                                        ..default()
-                                    }),
-                                )
-                                .with_children(|builder| {
-                                    builder.spawn(TextBundle {
-                                        text: Text::from_section(
-                                            "2".to_string(),
-                                            TextStyle {
-                                                font: theme.font.clone(),
-                                                font_size: theme.input.size,
-                                                color: Srgba::hex("F8F8FA").unwrap().into(),
-                                            },
-                                        ),
-                                        ..Default::default()
-                                    });
-                                    builder
-                                        .spawn((
-                                            NodeBundle {
-                                                style: Style {
-                                                    flex_direction: FlexDirection::Column,
-                                                    padding: UiRect::new(
-                                                        Val::Px(12.0),
-                                                        Val::Px(12.0),
-                                                        Val::Px(0.0),
-                                                        Val::Px(12.0),
-                                                    ),
-                                                    ..default()
-                                                },
-                                                background_color: Srgba::hex("38383D")
-                                                    .unwrap()
-                                                    .into(),
-                                                ..default()
-                                            },
-                                            Name::new("Border"),
-                                        ))
-                                        .with_children(|builder| {
-                                            builder.spawn(TextBundle {
-                                                style: Style { ..default() },
-                                                text: Text::from_section(
-                                                    "border".to_string(),
-                                                    TextStyle {
-                                                        font: theme.font.clone(),
-                                                        font_size: theme.input.size,
-                                                        color: Srgba::hex("F8F8FA").unwrap().into(),
-                                                    },
-                                                ),
-                                                ..Default::default()
-                                            });
-                                            builder
-                                                .spawn(
-                                                    (NodeBundle {
-                                                        style: Style {
-                                                            flex_direction: FlexDirection::Row,
-                                                            align_items: AlignItems::Center,
-                                                            ..default()
-                                                        },
-                                                        ..default()
-                                                    }),
-                                                )
-                                                .with_children(|builder| {
-                                                    builder.spawn(TextBundle {
-                                                        text: Text::from_section(
-                                                            "4".to_string(),
-                                                            TextStyle {
-                                                                font: theme.font.clone(),
-                                                                font_size: theme.input.size,
-                                                                color: Srgba::hex("F8F8FA")
-                                                                    .unwrap()
-                                                                    .into(),
-                                                            },
-                                                        ),
-                                                        ..Default::default()
-                                                    });
-                                                    builder
-                                                        .spawn((
-                                                            NodeBundle {
-                                                                style: Style {
-                                                                    padding: UiRect::new(
-                                                                        Val::Px(12.0),
-                                                                        Val::Px(12.0),
-                                                                        Val::Px(0.0),
-                                                                        Val::Px(12.0),
-                                                                    ),
-                                                                    flex_direction:
-                                                                        FlexDirection::Column,
-                                                                    ..default()
-                                                                },
-                                                                background_color: Srgba::hex(
-                                                                    "6657A6",
-                                                                )
-                                                                .unwrap()
-                                                                .into(),
-                                                                ..default()
-                                                            },
-                                                            Name::new("Padding"),
-                                                        ))
-                                                        .with_children(|builder| {
-                                                            builder.spawn(TextBundle {
-                                                                text: Text::from_section(
-                                                                    "padding".to_string(),
-                                                                    TextStyle {
-                                                                        font: theme.font.clone(),
-                                                                        font_size: theme.input.size,
-                                                                        color: Srgba::hex("F8F8FA")
-                                                                            .unwrap()
-                                                                            .into(),
-                                                                    },
-                                                                ),
-                                                                ..Default::default()
-                                                            });
-                                                            builder
-                                                                .spawn(
-                                                                    (NodeBundle {
-                                                                        style: Style {
-                                                                            flex_direction:
-                                                                                FlexDirection::Row,
-                                                                            align_items:
-                                                                                AlignItems::Center,
-                                                                            ..default()
-                                                                        },
-                                                                        ..default()
-                                                                    }),
-                                                                )
-                                                                .with_children(|builder| {
-                                                                    builder.spawn(TextBundle {
-                                                                        text: Text::from_section(
-                                                                            "6".to_string(),
-                                                                            TextStyle {
-                                                                                font: theme
-                                                                                    .font
-                                                                                    .clone(),
-                                                                                font_size: theme
-                                                                                    .input
-                                                                                    .size,
-                                                                                color: Srgba::hex(
-                                                                                    "F8F8FA",
-                                                                                )
-                                                                                .unwrap()
-                                                                                .into(),
-                                                                            },
-                                                                        ),
-                                                                        ..Default::default()
-                                                                    });
-                                                                    builder
-                                                                .spawn((
-                                                                    NodeBundle {
-                                                                        style: Style {
-                                                                            padding: UiRect::new(
-                                                                                Val::Px(12.0),
-                                                                                Val::Px(12.0),
-                                                                                Val::Px(12.0),
-                                                                                Val::Px(12.0),
-                                                                            ),
-                                                                            border:UiRect::all(Val::Px(1.0) ),
-                                                                            ..default()
-                                                                        },
-                                                                        border_color: BLACK.into(),
-                                                                        background_color:
-                                                                            Srgba::hex("407AA4")
-                                                                                .unwrap()
-                                                                                .into(),
-                                                                        ..default()
-                                                                    },
-                                                                    Name::new("NodeSize"),
-                                                                ))
-                                                                .with_children(|builder| {
-                                                                    builder.spawn(TextBundle {
-                                                                        style: Style {
-                                                                            ..default()
-                                                                        },
-                                                                        text: Text::from_section(
-                                                                            "1000x370".to_string(),
-                                                                            TextStyle {
-                                                                                font: theme
-                                                                                    .font
-                                                                                    .clone(),
-                                                                                font_size: theme
-                                                                                    .input
-                                                                                    .size,
-                                                                                color: Srgba::hex(
-                                                                                    "F8F8FA",
-                                                                                )
-                                                                                .unwrap()
-                                                                                .into(),
-                                                                            },
-                                                                        ),
-                                                                        ..Default::default()
-                                                                    });
-                                                                });
-                                                                    builder.spawn(TextBundle {
-                                                                        background_color:
-                                                                            Srgba::hex("6657A6")
-                                                                                .unwrap()
-                                                                                .into(),
-                                                                        text: Text::from_section(
-                                                                            "7".to_string(),
-                                                                            TextStyle {
-                                                                                font: theme
-                                                                                    .font
-                                                                                    .clone(),
-                                                                                font_size: theme
-                                                                                    .input
-                                                                                    .size,
-                                                                                color: Srgba::hex(
-                                                                                    "F8F8FA",
-                                                                                )
-                                                                                .unwrap()
-                                                                                .into(),
-                                                                            },
-                                                                        ),
-                                                                        ..Default::default()
-                                                                    });
-                                                                });
-                                                        });
-                                                    builder.spawn(TextBundle {
-                                                        text: Text::from_section(
-                                                            "5".to_string(),
-                                                            TextStyle {
-                                                                font: theme.font.clone(),
-                                                                font_size: theme.input.size,
-                                                                color: Srgba::hex("F8F8FA")
-                                                                    .unwrap()
-                                                                    .into(),
-                                                            },
-                                                        ),
-                                                        ..Default::default()
-                                                    });
-                                                });
-                                        });
-                                    builder.spawn(TextBundle {
-                                        text: Text::from_section(
-                                            "3".to_string(),
-                                            TextStyle {
-                                                font: theme.font.clone(),
-                                                font_size: theme.input.size,
-                                                color: Srgba::hex("F8F8FA").unwrap().into(),
-                                            },
-                                        ),
-                                        ..Default::default()
-                                    });
-                                });
-                        });
-                    builder.spawn(TextBundle {
-                        text: Text::from_section(
-                            "1".to_string(),
-                            TextStyle {
-                                font: theme.font.clone(),
-                                font_size: theme.input.size,
-                                color: theme.input.color,
-                            },
-                        ),
-                        ..Default::default()
-                    });
-                });
         })
         .id();
+
+    let padding = thing("padding", commands, theme, "6657A6", node_size.into());
+    let border = thing("border", commands, theme, "38383D", padding.into());
+    let margin = thing("margin", commands, theme, "73764A", border.into());
+    let position = thing("position", commands, theme, "222222", margin.into());
+
     let mut container = commands.spawn((
         NodeBundle {
-            style: Style { ..default() },
+            style: Style {
+                width: Val::Percent(100.0),
+                justify_content: JustifyContent::Center,
+                ..default()
+            },
             ..default()
         },
         Name::new("SpacingContainer"),
@@ -895,6 +748,7 @@ fn spacing(commands: &mut Commands, theme: &Theme) -> Entity {
     container.push_children(&[position]);
     container.id()
 }
+
 fn val_input_width_fixer(
     val_input_q: Query<(Entity, &ValInput)>,
     mut val_input_dropdown_q: Query<
@@ -988,6 +842,10 @@ pub fn create_val_thing(
                     justify_content: JustifyContent::SpaceBetween,
                     padding: UiRect::horizontal(Val::Px(6.0)),
                     border: UiRect::new(Val::Px(0.0), Val::Px(1.0), Val::Px(1.0), Val::Px(1.0)),
+                    overflow: Overflow {
+                        x: OverflowAxis::Hidden,
+                        ..default()
+                    },
                     ..Default::default()
                 },
                 border_radius: BorderRadius::new(
@@ -1106,9 +964,13 @@ fn create_input(commands: &mut Commands, theme: &Theme) -> Entity {
                 style: Style {
                     height: Val::Px(22.0),
                     width: Val::Px(120.0),
-                    justify_content: JustifyContent::FlexStart,
+                    justify_content: JustifyContent::Center,
                     align_items: AlignItems::Center,
                     border: UiRect::new(Val::Px(1.0), Val::Px(0.0), Val::Px(1.0), Val::Px(1.0)),
+                    overflow: Overflow {
+                        x: OverflowAxis::Hidden,
+                        ..default()
+                    },
                     ..Default::default()
                 },
                 border_radius: BorderRadius::new(
