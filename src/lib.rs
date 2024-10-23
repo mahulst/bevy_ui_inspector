@@ -453,8 +453,10 @@ fn render_nested_elements(
 }
 pub struct UiInspectorPlugin;
 impl Plugin for UiInspectorPlugin {
-     fn build(&self, app: &mut App) {
-        app.add_plugins(EguiPlugin);
+    fn build(&self, app: &mut App) {
+        if !app.is_plugin_added::<EguiPlugin>() {
+            app.add_plugins(EguiPlugin);
+        }
         app.insert_resource(RestorePreviousResource::default());
         app.insert_resource(PickingUiNode::default());
         app.add_systems(Update, (create_ui, ui_node_hit_test_system));
