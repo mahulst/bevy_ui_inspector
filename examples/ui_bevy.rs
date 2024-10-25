@@ -71,6 +71,18 @@ fn spawn_layout(
                 ..default()
             }),
         )
+        .with_children(|builder| {
+            builder.spawn(
+                (NodeBundle {
+                    style: Style {
+                        width: Val::Percent(100.0),
+                        justify_content: JustifyContent::Center,
+                        ..default()
+                    },
+                    ..default()
+                }),
+            );
+        })
         .id();
     let margin_left = create_val_thing(
         &mut commands,
@@ -227,6 +239,58 @@ fn spawn_layout(
             },
         },
         ValTypeLink::BorderBottom,
+    );
+    let position_left = create_val_thing(
+        &mut commands,
+        &icons,
+        &theme,
+        Dropdown {
+            open: false,
+            selected: DropdownItem {
+                label: "px".to_string(),
+                value: ValTypes::Px.into(),
+            },
+        },
+        ValTypeLink::PositionLeft,
+    );
+    let position_right = create_val_thing(
+        &mut commands,
+        &icons,
+        &theme,
+        Dropdown {
+            open: false,
+            selected: DropdownItem {
+                label: "px".to_string(),
+                value: ValTypes::Px.into(),
+            },
+        },
+        ValTypeLink::PositionRight,
+    );
+    let position_top = create_val_thing(
+        &mut commands,
+        &icons,
+        &theme,
+        Dropdown {
+            open: false,
+            selected: DropdownItem {
+                label: "px".to_string(),
+                value: ValTypes::Px.into(),
+            },
+        },
+        ValTypeLink::PositionTop,
+    );
+    let position_bottom = create_val_thing(
+        &mut commands,
+        &icons,
+        &theme,
+        Dropdown {
+            open: false,
+            selected: DropdownItem {
+                label: "px".to_string(),
+                value: ValTypes::Px.into(),
+            },
+        },
+        ValTypeLink::PositionBottom,
     );
     let width = create_val_thing(
         &mut commands,
@@ -398,6 +462,19 @@ fn spawn_layout(
             ..Default::default()
         })
         .id();
+    let position_title = commands
+        .spawn(TextBundle {
+            text: Text::from_section(
+                "position".to_string(),
+                TextStyle {
+                    font: theme.font.clone(),
+                    font_size: theme.input.size,
+                    color: theme.input.color,
+                },
+            ),
+            ..Default::default()
+        })
+        .id();
     let left_title = commands
         .spawn(TextBundle {
             text: Text::from_section(
@@ -479,7 +556,7 @@ fn spawn_layout(
                 style: Style {
                     display: Display::Grid,
                     grid_template_columns: RepeatedGridTrack::min_content(5),
-                    grid_template_rows: RepeatedGridTrack::min_content(4),
+                    grid_template_rows: RepeatedGridTrack::min_content(5),
                     row_gap: Val::Px(12.0),
                     column_gap: Val::Px(12.0),
                     ..default()
@@ -513,6 +590,12 @@ fn spawn_layout(
             border_right,
             border_top,
             border_bottom,
+            //position
+            position_title,
+            position_left,
+            position_right,
+            position_top,
+            position_bottom,
         ]);
         let mut ui_rect_grid = builder.spawn((
             NodeBundle {
@@ -569,6 +652,29 @@ fn get_number_val(val: Val) -> f32 {
         Val::Auto => 0.0,
     }
 }
+enum CalculateDirection {
+    Horizontal,
+    Vertical,
+}
+fn get_calculated_pixel_val(
+    val: Val,
+    parent_size: Vec2,
+    window_size: Vec2,
+    direction: CalculateDirection,
+) -> f32 {
+    match val {
+        Val::Px(num) => num,
+        Val::Percent(num) => match direction {
+            CalculateDirection::Horizontal => parent_size.x * num / 100.0,
+            CalculateDirection::Vertical => parent_size.y * num / 100.0,
+        },
+        Val::Vw(num) => window_size.x / 100.0 * num,
+        Val::Vh(num) => window_size.y / 100.0 * num,
+        Val::VMin(num) => todo!(),
+        Val::VMax(num) => todo!(),
+        Val::Auto => 0.0,
+    }
+}
 fn update_style_panel(
     style_inputs_q: Query<(&ValTypeLink, Entity)>,
     active_style_inspection: Res<ActiveStyleInspection>,
@@ -599,6 +705,10 @@ fn update_style_panel(
                     ValTypeLink::BorderRight => get_val_type(style.border.right),
                     ValTypeLink::BorderTop => get_val_type(style.border.top),
                     ValTypeLink::BorderBottom => get_val_type(style.border.bottom),
+                    ValTypeLink::PositionLeft => get_val_type(style.left),
+                    ValTypeLink::PositionRight => get_val_type(style.right),
+                    ValTypeLink::PositionTop => get_val_type(style.top),
+                    ValTypeLink::PositionBottom => get_val_type(style.bottom),
                     ValTypeLink::Width => get_val_type(style.width),
                     ValTypeLink::MinWidth => get_val_type(style.min_width),
                     ValTypeLink::MaxWidth => get_val_type(style.max_width),
@@ -633,6 +743,10 @@ fn update_style_panel(
                             ValTypeLink::BorderRight => get_number_val(style.border.right),
                             ValTypeLink::BorderTop => get_number_val(style.border.top),
                             ValTypeLink::BorderBottom => get_number_val(style.border.bottom),
+                            ValTypeLink::PositionLeft => get_number_val(style.left),
+                            ValTypeLink::PositionRight => get_number_val(style.right),
+                            ValTypeLink::PositionTop => get_number_val(style.top),
+                            ValTypeLink::PositionBottom => get_number_val(style.bottom),
                             ValTypeLink::Width => get_number_val(style.width),
                             ValTypeLink::MinWidth => get_number_val(style.min_width),
                             ValTypeLink::MaxWidth => get_number_val(style.max_width),
@@ -663,6 +777,11 @@ enum ValTypeLink {
     BorderRight,
     BorderTop,
     BorderBottom,
+
+    PositionLeft,
+    PositionRight,
+    PositionTop,
+    PositionBottom,
 
     Width,
     MinWidth,
@@ -724,6 +843,10 @@ fn update_style_property(
                                     ValTypeLink::BorderRight => style.border.right = val,
                                     ValTypeLink::BorderTop => style.border.top = val,
                                     ValTypeLink::BorderBottom => style.border.bottom = val,
+                                    ValTypeLink::PositionLeft => style.left = val,
+                                    ValTypeLink::PositionRight => style.right = val,
+                                    ValTypeLink::PositionTop => style.top = val,
+                                    ValTypeLink::PositionBottom => style.bottom = val,
                                     ValTypeLink::Width => style.width = val,
                                     ValTypeLink::MinWidth => style.min_width = val,
                                     ValTypeLink::MaxWidth => style.max_width = val,
@@ -740,15 +863,19 @@ fn update_style_property(
 }
 fn update_spacing_markers(
     mut text_q: Query<&mut Text>,
-    style_q: Query<(&Style, &Node, &GlobalTransform)>,
+    style_q: Query<(&Style, &Node, &GlobalTransform, Option<&Parent>)>,
     active_style_inspection: Res<ActiveStyleInspection>,
     spacing_markers_q: Query<(&SpacingMarker, &SpacingMarkerPosition, Entity)>,
     dimension_markers_q: Query<Entity, With<SpacingDimensionsMarker>>,
+    windows_q: Query<(&Window)>,
 ) {
-    if let Some(e) = active_style_inspection.entity
-    // .filter(|_| active_style_inspection.is_changed())
-    {
-        let (style, node, tf) = style_q.get(e).unwrap();
+    if let Some(e) = active_style_inspection.entity {
+        let (style, node, tf, parent) = style_q.get(e).unwrap();
+        let window_size = windows_q.get_single().unwrap().size();
+        let parent_size = parent
+            .and_then(|parent_e| style_q.get(parent_e.get()).ok())
+            .map(|(_, node, _, _)| node.size())
+            .unwrap_or(window_size);
         let dimensions = node.size();
         let pos = node.logical_rect(tf);
 
@@ -763,57 +890,138 @@ fn update_spacing_markers(
             .iter()
             .for_each(|(spacing_type, position, e)| {
                 let mut text = text_q.get_mut(e).unwrap();
-                match (spacing_type, position) {
+                let new = match (spacing_type, position) {
                     (SpacingMarker::Position, SpacingMarkerPosition::Left) => {
-                        text.sections[0].value = format!("{}", get_number_val(style.left));
+                        get_calculated_pixel_val(
+                            style.left,
+                            parent_size,
+                            window_size,
+                            CalculateDirection::Horizontal,
+                        )
                     }
                     (SpacingMarker::Position, SpacingMarkerPosition::Right) => {
-                        text.sections[0].value = format!("{}", get_number_val(style.right));
+                        get_calculated_pixel_val(
+                            style.right,
+                            parent_size,
+                            window_size,
+                            CalculateDirection::Horizontal,
+                        )
                     }
                     (SpacingMarker::Position, SpacingMarkerPosition::Top) => {
-                        text.sections[0].value = format!("{}", get_number_val(style.top));
+                        get_calculated_pixel_val(
+                            style.top,
+                            parent_size,
+                            window_size,
+                            CalculateDirection::Vertical,
+                        )
                     }
                     (SpacingMarker::Position, SpacingMarkerPosition::Bottom) => {
-                        text.sections[0].value = format!("{}", get_number_val(style.bottom));
+                        get_calculated_pixel_val(
+                            style.bottom,
+                            parent_size,
+                            window_size,
+                            CalculateDirection::Vertical,
+                        )
                     }
 
                     (SpacingMarker::Margin, SpacingMarkerPosition::Left) => {
-                        text.sections[0].value = format!("{}", get_number_val(style.margin.left));
+                        get_calculated_pixel_val(
+                            style.margin.left,
+                            parent_size,
+                            window_size,
+                            CalculateDirection::Horizontal,
+                        )
                     }
                     (SpacingMarker::Margin, SpacingMarkerPosition::Right) => {
-                        text.sections[0].value = format!("{}", get_number_val(style.margin.right));
+                        get_calculated_pixel_val(
+                            style.margin.right,
+                            parent_size,
+                            window_size,
+                            CalculateDirection::Horizontal,
+                        )
                     }
                     (SpacingMarker::Margin, SpacingMarkerPosition::Top) => {
-                        text.sections[0].value = format!("{}", get_number_val(style.margin.top));
+                        get_calculated_pixel_val(
+                            style.margin.top,
+                            parent_size,
+                            window_size,
+                            CalculateDirection::Vertical,
+                        )
                     }
                     (SpacingMarker::Margin, SpacingMarkerPosition::Bottom) => {
-                        text.sections[0].value = format!("{}", get_number_val(style.margin.bottom));
+                        get_calculated_pixel_val(
+                            style.margin.bottom,
+                            parent_size,
+                            window_size,
+                            CalculateDirection::Vertical,
+                        )
                     }
                     (SpacingMarker::Border, SpacingMarkerPosition::Left) => {
-                        text.sections[0].value = format!("{}", get_number_val(style.border.left));
+                        get_calculated_pixel_val(
+                            style.border.left,
+                            parent_size,
+                            window_size,
+                            CalculateDirection::Horizontal,
+                        )
                     }
                     (SpacingMarker::Border, SpacingMarkerPosition::Right) => {
-                        text.sections[0].value = format!("{}", get_number_val(style.border.right));
+                        get_calculated_pixel_val(
+                            style.border.right,
+                            parent_size,
+                            window_size,
+                            CalculateDirection::Horizontal,
+                        )
                     }
                     (SpacingMarker::Border, SpacingMarkerPosition::Top) => {
-                        text.sections[0].value = format!("{}", get_number_val(style.border.top));
+                        get_calculated_pixel_val(
+                            style.border.top,
+                            parent_size,
+                            window_size,
+                            CalculateDirection::Vertical,
+                        )
                     }
                     (SpacingMarker::Border, SpacingMarkerPosition::Bottom) => {
-                        text.sections[0].value = format!("{}", get_number_val(style.border.bottom));
+                        get_calculated_pixel_val(
+                            style.border.bottom,
+                            parent_size,
+                            window_size,
+                            CalculateDirection::Vertical,
+                        )
                     }
                     (SpacingMarker::Padding, SpacingMarkerPosition::Left) => {
-                        text.sections[0].value = format!("{}", get_number_val(style.padding.left));
+                        get_calculated_pixel_val(
+                            style.padding.left,
+                            parent_size,
+                            window_size,
+                            CalculateDirection::Horizontal,
+                        )
                     }
                     (SpacingMarker::Padding, SpacingMarkerPosition::Right) => {
-                        text.sections[0].value = format!("{}", get_number_val(style.padding.right));
+                        get_calculated_pixel_val(
+                            style.padding.right,
+                            parent_size,
+                            window_size,
+                            CalculateDirection::Horizontal,
+                        )
                     }
                     (SpacingMarker::Padding, SpacingMarkerPosition::Top) => {
-                        text.sections[0].value = format!("{}", get_number_val(style.padding.top));
+                        get_calculated_pixel_val(
+                            style.padding.top,
+                            parent_size,
+                            window_size,
+                            CalculateDirection::Vertical,
+                        )
                     }
                     (SpacingMarker::Padding, SpacingMarkerPosition::Bottom) => {
-                        text.sections[0].value = format!("{}", get_number_val(style.padding.bottom));
+                        get_calculated_pixel_val(
+                            style.padding.bottom,
+                            parent_size,
+                            window_size,
+                            CalculateDirection::Vertical,
+                        )
                     }
                 };
+                text.sections[0].value = format!("{}", new);
             });
     }
 }
