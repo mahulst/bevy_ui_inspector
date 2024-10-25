@@ -55,8 +55,8 @@ fn spawn_layout(
     commands.spawn(Camera2dBundle::default());
     let position_thing = spacing(&mut commands, &theme);
     let entity_id = commands
-        .spawn(
-            (NodeBundle {
+        .spawn((
+            NodeBundle {
                 background_color: AMBER_500.into(),
                 style: Style {
                     left: Val::Px(300.0),
@@ -69,19 +69,21 @@ fn spawn_layout(
                     ..default()
                 },
                 ..default()
-            }),
-        )
+            },
+            Name::new("OrangeSquare"),
+        ))
         .with_children(|builder| {
-            builder.spawn(
-                (NodeBundle {
+            builder.spawn((
+                NodeBundle {
                     style: Style {
                         width: Val::Percent(100.0),
                         justify_content: JustifyContent::Center,
                         ..default()
                     },
                     ..default()
-                }),
-            );
+                },
+                Name::new("ChildSquare"),
+            ));
         })
         .id();
     let margin_left = create_val_thing(

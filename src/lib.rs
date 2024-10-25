@@ -1,30 +1,20 @@
-use bevy::{
-    color::palettes::tailwind::{GREEN_100, GREEN_400},
-    prelude::*,
-};
+use bevy::prelude::*;
 use bevy_egui::{
     egui::{self, Ui},
     EguiContexts, EguiPlugin,
 };
-use std::mem;
 pub mod dropdown;
-pub mod theme;
 pub mod icons;
+pub mod theme;
 
 #[derive(Resource, Default)]
 struct RestorePreviousResource {
-    previous: Option<PreviousElementHighlighted>,
     selected: Option<Entity>,
+    hovered: Option<Entity>,
 }
 #[derive(Resource, Default)]
 struct PickingUiNode {
     is_picking: bool,
-}
-struct PreviousElementHighlighted {
-    entity: Entity,
-    border_color: Color,
-    background_color: Color,
-    border_width: UiRect,
 }
 
 #[derive(Default, PartialEq, Eq, Clone, Debug)]
@@ -118,39 +108,47 @@ macro_rules! enum_dropdown {
 fn ui_node_hit_test_system(
     windows: Query<&Window>,
     mouse_button_input: Res<ButtonInput<MouseButton>>,
-    node_query: Query<(Entity, &GlobalTransform, &Node)>,
-    mut style_q: Query<(&mut Style, &mut BorderColor, &mut BackgroundColor)>,
+    node_query: Query<(Entity, &GlobalTransform, &Node), Without<HoverUiElementMarker>>,
+    node_q: Query<(&Node, &GlobalTransform)>,
     mut previous_resource: ResMut<RestorePreviousResource>,
+    hovered_ui_q: Query<Entity, With<HoverUiElementMarker>>,
     mut picking_ui_node: ResMut<PickingUiNode>,
+    mut commands: Commands,
 ) {
-    if !picking_ui_node.is_picking {
-        return;
-    }
+    let entity_m: Option<Entity> = if picking_ui_node.is_picking {
+        let window = windows.get_single().unwrap();
+        window.cursor_position().and_then(|cursor_position| {
+            let mut nodes_under_cursor = Vec::new();
 
-    let window = windows.get_single().unwrap();
-    if let Some(cursor_position) = window.cursor_position() {
-        let mut nodes_under_cursor = Vec::new();
+            for (entity, global_transform, node) in node_query.iter() {
+                let position = node.logical_rect(global_transform);
 
-        for (entity, global_transform, node) in node_query.iter() {
-            let position = node.logical_rect(global_transform);
+                if position.contains(cursor_position) {
+                    let z = node.stack_index();
 
-            if position.contains(cursor_position) {
-                let z = node.stack_index();
-
-                nodes_under_cursor.push((entity, z));
+                    nodes_under_cursor.push((entity, z));
+                }
             }
-        }
 
-        nodes_under_cursor.sort_by(|a, b| b.1.cmp(&a.1));
+            nodes_under_cursor.sort_by(|a, b| b.1.cmp(&a.1));
 
-        if let Some((top_entity, _)) = nodes_under_cursor.first() {
-            color_hovered_element(&mut previous_resource, &mut style_q, top_entity);
-            if mouse_button_input.just_pressed(MouseButton::Left) {
-                previous_resource.selected = Some(*top_entity);
-            }
+            nodes_under_cursor.first().map(|(top_entity, _)| {
+                if mouse_button_input.just_pressed(MouseButton::Left) {
+                    previous_resource.selected = Some(*top_entity);
+                    previous_resource.hovered = None;
+                }
+                *top_entity
+            })
+        })
+    } else {
+        previous_resource.hovered.or(previous_resource.selected)
+    };
+    if let Some(entity) = entity_m {
+        if let Ok((node, tf)) = node_q.get(entity) {
+            let pos = node.logical_rect(tf);
+            show_hovered_ui(&mut commands, &hovered_ui_q, pos)
         }
     }
-
     if mouse_button_input.just_pressed(MouseButton::Left) {
         picking_ui_node.is_picking = false;
     }
@@ -158,7 +156,10 @@ fn ui_node_hit_test_system(
 
 fn create_ui(
     mut contexts: EguiContexts,
-    ui_root_q: Query<(Entity, &Node, &Children), Without<Parent>>,
+    ui_root_q: Query<
+        (Entity, &Node, Option<&Children>),
+        (Without<Parent>, Without<HoverUiElementMarker>),
+    >,
     parents_q: Query<&Parent, With<Node>>,
     ui_q: Query<(Entity, &Node, Option<&Children>, Option<&Name>)>,
     mut style_q: Query<(&mut Style, &mut BorderColor, &mut BackgroundColor)>,
@@ -183,7 +184,7 @@ fn create_ui(
             current_entity = parent.get();
         }
     }
-
+    let mut something_hovered = false;
     egui::Window::new("UI Inspector").show(contexts.ctx_mut(), |ui| {
         ui.horizontal(|ui| {
             if ui.button("pick element").clicked() {
@@ -204,24 +205,35 @@ fn create_ui(
         ui.horizontal(|ui| {
             ui.vertical(|ui| {
                 ui.set_width(200.0);
-                ui.set_min_height(600.0);
-                ui_root_q.iter().for_each(|(_, _, children)| {
-                    ui.label("Root");
-                    egui::ScrollArea::vertical()
-                        .auto_shrink([false, false]) // Ensure the ScrollArea doesn't shrink automatically
-                        .show(ui, |ui| {
-                            render_nested_elements(
-                                ui,
-                                &ui_q,
-                                children.into(),
-                                &mut style_q,
-                                &mut previous_resource,
-                                &parents_of_selected,
-                                &open_on_change,
-                                &collapse_all,
-                            );
-                        });
-                });
+                ui.set_height(600.0);
+                ui_root_q
+                    .iter()
+                    .enumerate()
+                    .for_each(|(i, (root_e, _, children))| {
+                        ui.label("Root");
+                        egui::ScrollArea::vertical()
+                            .id_salt(i.to_string())
+                            .auto_shrink([false, true]) // Ensure the ScrollArea doesn't shrink automatically
+                            .show(ui, |ui| {
+                                let button = ui.button("Select");
+                                if button.clicked() {
+                                    previous_resource.selected = Some(root_e);
+                                }
+
+                                let something_within_root_hoverd = render_nested_elements(
+                                    ui,
+                                    &ui_q,
+                                    children.into(),
+                                    &mut previous_resource,
+                                    &parents_of_selected,
+                                    &open_on_change,
+                                    &collapse_all,
+                                );
+                                if something_within_root_hoverd {
+                                    something_hovered = true;
+                                }
+                            });
+                    });
             });
             ui.vertical(|ui| {
                 if let Some((mut selected_style, _, _)) = previous_resource
@@ -366,47 +378,21 @@ fn create_ui(
             });
         });
     });
-}
-fn color_hovered_element(
-    previous_resource: &mut ResMut<RestorePreviousResource>,
-    style_q: &mut Query<(&mut Style, &mut BorderColor, &mut BackgroundColor)>,
-    ui_entity: &Entity,
-) {
-    // Restore previous
-    let previous = mem::take(&mut previous_resource.previous);
-    if let Some(prev) = previous {
-        if let Ok((mut style, mut border, mut background_color)) = style_q.get_mut(prev.entity) {
-            style.border = prev.border_width;
-            border.0 = prev.border_color;
-            background_color.0 = prev.background_color;
-        }
-    }
-
-    if let Ok((mut style, mut border, mut background_color)) = style_q.get_mut(*ui_entity) {
-        // Store current styles before changing
-        previous_resource.previous = Some(PreviousElementHighlighted {
-            entity: *ui_entity,
-            border_color: border.0,
-            background_color: background_color.0,
-            border_width: style.border,
-        });
-
-        // Update current style
-        style.border = UiRect::all(Val::Px(2.0));
-        border.0 = GREEN_400.into();
-        background_color.0 = GREEN_100.into();
+    if !something_hovered {
+        previous_resource.hovered = None;
     }
 }
+
 fn render_nested_elements(
     ui: &mut Ui,
     ui_q: &Query<(Entity, &Node, Option<&Children>, Option<&Name>)>,
     children: Option<&Children>,
-    style_q: &mut Query<(&mut Style, &mut BorderColor, &mut BackgroundColor)>,
     previous_resource: &mut ResMut<RestorePreviousResource>,
     parents_of_selected: &Vec<Entity>,
     open_on_change: &Option<Entity>,
     collapse_all: &Option<bool>,
-) {
+) -> bool {
+    let mut something_hovered = false;
     if let Some(children) = children {
         children.iter().for_each(|child| {
             if let Ok((e, _, children, name)) = ui_q.get(*child) {
@@ -436,23 +422,72 @@ fn render_nested_elements(
                             previous_resource.selected = Some(*child);
                         }
 
-                        render_nested_elements(
+                        let something_already_hovered = render_nested_elements(
                             ui,
                             ui_q,
                             children,
-                            style_q,
                             previous_resource,
                             parents_of_selected,
                             open_on_change,
                             collapse_all,
                         );
+                        if something_already_hovered {
+                            something_hovered = true;
+                        }
                     });
                 if thing.header_response.hovered() {
-                    color_hovered_element(previous_resource, style_q, child);
+                    previous_resource.hovered = Some(*child);
+                    something_hovered = true;
                 }
             }
         });
     }
+    something_hovered
+}
+#[derive(Component)]
+struct HoverUiElementMarker;
+fn show_hovered_ui(
+    commands: &mut Commands,
+    hovered_ui_q: &Query<Entity, With<HoverUiElementMarker>>,
+    pos: Rect,
+) {
+    for entity in hovered_ui_q {
+        commands.entity(entity).despawn();
+    }
+
+    commands
+        .spawn((
+            NodeBundle {
+                style: Style {
+                    position_type: PositionType::Absolute,
+                    left: Val::Px(0.0),
+                    top: Val::Px(0.0),
+                    width: Val::Percent(100.0),
+                    height: Val::Percent(100.0),
+
+                    ..default()
+                },
+                z_index: ZIndex::Global(i32::MAX),
+                ..default()
+            },
+            HoverUiElementMarker,
+        ))
+        .with_children(|builder| {
+            builder.spawn((
+                NodeBundle {
+                    style: Style {
+                        left: Val::Px(pos.min.x),
+                        top: Val::Px(pos.min.y),
+                        width: Val::Px(pos.max.x - pos.min.x),
+                        height: Val::Px(pos.max.y - pos.min.y),
+                        ..default()
+                    },
+                    background_color: BackgroundColor(Color::srgba(0.0, 0.0, 1.0, 0.3)),
+                    ..default()
+                },
+                HoverUiElementMarker,
+            ));
+        });
 }
 pub struct UiInspectorPlugin;
 impl Plugin for UiInspectorPlugin {
