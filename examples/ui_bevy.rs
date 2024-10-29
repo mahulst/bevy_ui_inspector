@@ -52,7 +52,10 @@ fn spawn_layout(
 ) {
     let font: Handle<Font> = asset_server.load("fonts/SourceCodePro-Regular.ttf");
     theme.font = font;
-    commands.spawn(Camera2dBundle::default());
+    let cam = commands.spawn((
+        Camera2dBundle::default(),
+        bevy::render::view::RenderLayers::layer(0),
+    )).id();
     let position_thing = spacing(&mut commands, &theme);
     let entity_id = commands
         .spawn((
@@ -71,6 +74,7 @@ fn spawn_layout(
                 ..default()
             },
             Name::new("OrangeSquare"),
+            TargetCamera(cam)
         ))
         .with_children(|builder| {
             builder.spawn((

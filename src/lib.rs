@@ -1,4 +1,4 @@
-use bevy::prelude::*;
+use bevy::{prelude::*, render::view::RenderLayers};
 use bevy_egui::{
     egui::{self, Ui},
     EguiContexts, EguiPlugin,
@@ -6,6 +6,8 @@ use bevy_egui::{
 pub mod dropdown;
 pub mod icons;
 pub mod theme;
+pub mod element;
+pub mod val;
 
 #[derive(Resource, Default)]
 struct RestorePreviousResource {
@@ -113,8 +115,15 @@ fn ui_node_hit_test_system(
     mut previous_resource: ResMut<RestorePreviousResource>,
     hovered_ui_q: Query<Entity, With<HoverUiElementMarker>>,
     mut picking_ui_node: ResMut<PickingUiNode>,
+    mut gizmos: Gizmos,
     mut commands: Commands,
 ) {
+    gizmos.rect_2d(
+        Vec2::ZERO,
+        0.,
+        Vec2::splat(450.0),
+        bevy::color::palettes::css::RED,
+    );
     let entity_m: Option<Entity> = if picking_ui_node.is_picking {
         let window = windows.get_single().unwrap();
         window.cursor_position().and_then(|cursor_position| {
@@ -446,6 +455,7 @@ fn render_nested_elements(
 }
 #[derive(Component)]
 struct HoverUiElementMarker;
+
 fn show_hovered_ui(
     commands: &mut Commands,
     hovered_ui_q: &Query<Entity, With<HoverUiElementMarker>>,
@@ -489,14 +499,35 @@ fn show_hovered_ui(
             ));
         });
 }
+fn setup(mut commands: Commands) {
+    commands.spawn((
+        Camera2dBundle {
+            camera: Camera {
+                clear_color: ClearColorConfig::None,
+                order: 4,
+                ..default()
+            },
+            ..default()
+        },
+        RenderLayers::layer(10),
+    ));
+}
 pub struct UiInspectorPlugin;
 impl Plugin for UiInspectorPlugin {
     fn build(&self, app: &mut App) {
         if !app.is_plugin_added::<EguiPlugin>() {
             app.add_plugins(EguiPlugin);
         }
+        app.insert_gizmo_config(
+            DefaultGizmoConfigGroup,
+            GizmoConfig {
+                render_layers: RenderLayers::layer(10),
+                ..default()
+            },
+        );
         app.insert_resource(RestorePreviousResource::default());
         app.insert_resource(PickingUiNode::default());
         app.add_systems(Update, (create_ui, ui_node_hit_test_system));
+        app.add_systems(Startup, (setup));
     }
 }
