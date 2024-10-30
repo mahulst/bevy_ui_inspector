@@ -1,10 +1,36 @@
 use std::any::TypeId;
 
 use bevy::{prelude::*, utils::HashMap};
+#[derive(Debug)]
+pub enum ElementChildren {
+    Elements(Vec<Element>),
+    Text(String, TextStyle),
+}
+impl Default for ElementChildren {
+    fn default() -> Self {
+        Self::Elements(vec![])
+    }
+}
 pub struct Element {
     pub node: NodeBundle,
     pub components: HashMap<TypeId, Box<dyn Reflect + Send + Sync>>,
-    pub children: Vec<Element>,
+    pub children: ElementChildren,
+}
+
+impl std::fmt::Debug for Element {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match &self.children {
+            ElementChildren::Elements(elements) => {
+                for ele in elements {
+                    f.write_str(&format!("Element:\n{:?}", ele));
+                }
+            }
+            ElementChildren::Text(text, _) => {
+                f.write_str(&format!("text: {:?}", text));
+            }
+        }
+        Ok(())
+    }
 }
 
 impl Element {
@@ -17,9 +43,19 @@ impl Element {
     }
 
     pub fn add_children(mut self, children: impl Into<Vec<Element>>) -> Self {
-        self.children.extend(children.into());
+        match &mut self.children {
+            ElementChildren::Elements(current_children) => current_children.extend(children.into()),
+            ElementChildren::Text(_, _) => {
+                println!("Can't add elements to text child");
+            }
+        }
         self
     }
+    pub fn with_text(mut self, text: impl Into<String>, style: TextStyle) -> Self {
+        self.children = ElementChildren::Text(text.into(), style);
+        self
+    }
+
     pub fn with_style<F>(mut self, mut closure: F) -> Self
     where
         F: FnMut(&mut Style),
@@ -57,23 +93,37 @@ pub fn spawn_element_hierarchy(
     world: &mut World,
     parent: Option<Entity>,
 ) -> Entity {
-    let id = world.spawn(my_struct.node).id();
+    let node_id = world.spawn(my_struct.node).id();
     if let Some(p) = parent {
         let mut parent_e = world.entity_mut(p);
-        parent_e.push_children(&[id]);
+        parent_e.push_children(&[node_id]);
     }
     for (type_id, data) in my_struct.components.into_iter() {
-        insert_component_to_element(id, data, type_id, world);
+        insert_component_to_element(node_id, data, type_id, world);
     }
-    for child in my_struct.children.into_iter() {
-        spawn_element_hierarchy(child, world, id.into());
+    match my_struct.children {
+        ElementChildren::Elements(children) => {
+            for child in children.into_iter() {
+                spawn_element_hierarchy(child, world, node_id.into());
+            }
+        }
+        ElementChildren::Text(text, style) => {
+            let text_bundle = TextBundle {
+                text: Text::from_section(text, style),
+                ..Default::default()
+            };
+
+            let id = world.spawn(text_bundle).id();
+            let mut parent_e = world.entity_mut(node_id);
+            parent_e.push_children(&[id]);
+        }
     }
-    id
+    node_id
 }
 
 #[derive(Default)]
 pub struct ComponentArgs {
-    pub children: Vec<Element>,
+    pub children: ElementChildren,
 }
 
 impl<T> From<T> for ComponentArgs
@@ -82,7 +132,7 @@ where
 {
     fn from(value: T) -> Self {
         ComponentArgs {
-            children: value.into(),
+            children: ElementChildren::Elements(value.into()),
         }
     }
 }

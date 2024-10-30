@@ -21,7 +21,7 @@ use bevy::{
     window::WindowResolution,
 };
 use bevy_ui_inspector::{
-    element::{spawn_element_hierarchy, ComponentArgs, Element},
+    element::{spawn_element_hierarchy, ComponentArgs, Element, ElementChildren},
     val::ValExt,
     UiInspectorPlugin,
 };
@@ -105,15 +105,15 @@ fn row_component() -> Element {
             ..default()
         },
         components: HashMap::new(),
-        children: vec![],
+        children: ElementChildren::Elements(vec![]),
     }
 }
 fn teset(query: Query<&MyComponentA>, queryw: Query<&MyComponentB>) {
-    dbg!(query.iter().len(), queryw.iter().len());
+    // dbg!(query.iter().len(), queryw.iter().len());
 }
 fn setup(world: &mut World) {
     let my_struct = box_component([
-        row_component(),
+        row_component().with_text("Poo", TextStyle::default()),
         row_component().add_component(MyComponentB {
             text: "hoi".to_string(),
         }),
@@ -122,7 +122,6 @@ fn setup(world: &mut World) {
     .add_children([row_component().with_style(|style| {
         style.margin = UiRect::left(10.0.px());
     })]);
-
     spawn_element_hierarchy(my_struct, world, None);
 
     //     let window = windows.get_single().unwrap();
