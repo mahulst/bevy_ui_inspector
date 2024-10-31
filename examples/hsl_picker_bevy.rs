@@ -105,7 +105,7 @@ fn row_component() -> Element {
             ..default()
         },
         components: HashMap::new(),
-        children: ElementChildren::Elements(vec![]),
+        children: vec![ElementChildren::None],
     }
 }
 fn teset(query: Query<&MyComponentA>, queryw: Query<&MyComponentB>) {
@@ -119,7 +119,7 @@ fn setup(world: &mut World) {
         }),
     ])
     .add_component(MyComponentA { value: 10 })
-    .add_children([row_component().with_style(|style| {
+    .add_child_elements([row_component().with_style(|style| {
         style.margin = UiRect::left(10.0.px());
     })]);
     spawn_element_hierarchy(my_struct, world, None);

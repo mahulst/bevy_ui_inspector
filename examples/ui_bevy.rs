@@ -1,15 +1,23 @@
-use std::clone;
+use std::{clone, fmt};
 
 use bevy::color::palettes::css::BLACK;
+use bevy::ecs::system::SystemState;
 use bevy::ui::FocusPolicy;
 use bevy::{color::palettes::tailwind::*, prelude::*, window::WindowResolution};
 use bevy_ui_inspector::dropdown::{
     self, create_dropdown, Dropdown, DropdownBox, DropdownItem, DropdownPlugin, DropdownSelected,
 };
+use bevy_ui_inspector::element::{spawn_element_hierarchy, ComponentArgs, Element};
 use bevy_ui_inspector::icons::{setup_icons, Icons};
 use bevy_ui_inspector::theme::Theme;
+use bevy_ui_inspector::val::ValExt;
 use bevy_ui_inspector::{UiInspectorPlugin, ValTypes};
-
+#[derive(Event)]
+struct SpawnUiEvent {
+    element: Element,
+    parent: Option<Entity>,
+    index: Option<usize>,
+}
 fn main() {
     App::new()
         .add_plugins(DefaultPlugins.set(WindowPlugin {
@@ -21,11 +29,17 @@ fn main() {
         }))
         .insert_resource(Icons::default())
         .insert_resource(Theme::default())
+        .add_event::<SpawnUiEvent>()
         .insert_resource(ActiveStyleInspection::default())
         .add_plugins(UiInspectorPlugin)
         .add_plugins(DropdownPlugin)
+        .register_type::<SpacingMarkerPosition>()
+        .register_type::<SpacingMarker>()
+        .register_type::<ValTypes>()
+        .register_type::<SpacingDimensionsMarker>()
         .add_systems(Startup, setup_icons)
-        .add_systems(Startup, spawn_layout.after(setup_icons))
+        .add_systems(Startup, spawn_layout)
+        .add_systems(Update, spawn_ui_on_event)
         .add_systems(
             Update,
             ((
@@ -43,598 +57,621 @@ fn main() {
         .run();
 }
 
-fn spawn_layout(
-    mut commands: Commands,
-    asset_server: Res<AssetServer>,
-    icons: Res<Icons>,
-    mut theme: ResMut<Theme>,
-    mut active_style_inspection: ResMut<ActiveStyleInspection>,
-) {
-    let font: Handle<Font> = asset_server.load("fonts/SourceCodePro-Regular.ttf");
-    theme.font = font;
-    let cam = commands.spawn((
-        Camera2dBundle::default(),
-        bevy::render::view::RenderLayers::layer(0),
-    )).id();
-    let position_thing = spacing(&mut commands, &theme);
-    let entity_id = commands
-        .spawn((
+fn spawn_ui_on_event(world: &mut World) {
+    let mut spawn_ui_events = world.get_resource_mut::<Events<SpawnUiEvent>>().unwrap();
+
+    let events: Vec<SpawnUiEvent> = spawn_ui_events.update_drain().collect();
+
+    // Clear the events after reading
+    for spawn_ui_e in events {
+        spawn_element_hierarchy(
+            spawn_ui_e.element,
+            world,
+            spawn_ui_e.parent,
+            spawn_ui_e.index,
+        );
+    }
+}
+
+fn print_debug(reflect_value: &dyn Reflect) {
+    let mut output = String::new();
+    let _ = std::fmt::write(&mut output, format_args!("{:?}", reflect_value));
+    println!("Reflected debug output: {}", output);
+}
+fn spawn_layout(world: &mut World) {
+    let mut system_state: SystemState<(
+        Commands,
+        Res<AssetServer>,
+        Res<Icons>,
+        ResMut<Theme>,
+        ResMut<ActiveStyleInspection>,
+        EventWriter<SpawnUiEvent>,
+    )> = SystemState::new(world);
+
+    let element_to_inspect = Element::default()
+        .background_color(AMBER_500)
+        .with_style(|style| {
+            style.left = 300.0.px();
+            style.top = 300.0.px();
+            style.width = 150.0.px();
+            style.height = 50.0.px();
+            style.margin = UiRect::all(12.0.px());
+            style.padding = UiRect::all(Val::Auto);
+            style.border = UiRect::all(1.0.px());
+        })
+        .add_component(Name::new("OrangeSquare"))
+        .add_child_elements([Element::default()
+            .with_style(|style| {
+                style.width = 100.0.pct();
+                style.justify_content = JustifyContent::Center;
+            })
+            .add_component(Name::new("ChildSquare"))]);
+    let entity_id = spawn_element_hierarchy(element_to_inspect, world, None, None);
+    {
+        let (
+            mut commands,
+            asset_server,
+            icons,
+            mut theme,
+            mut active_style_inspection,
+            mut spawn_ui_event_writer,
+        ) = system_state.get_mut(world);
+        let font: Handle<Font> = asset_server.load("fonts/SourceCodePro-Regular.ttf");
+        theme.font = font;
+        commands.spawn((
+            Camera2dBundle::default(),
+            bevy::render::view::RenderLayers::layer(0),
+        ));
+
+        let margin_left = create_val_thing(
+            &mut commands,
+            &icons,
+            &theme,
+            Dropdown {
+                open: false,
+                selected: DropdownItem {
+                    label: "px".to_string(),
+                    value: Box::new(ValTypes::Px),
+                },
+            },
+            ValTypeLink::MarginLeft,
+        );
+        let margin_right = create_val_thing(
+            &mut commands,
+            &icons,
+            &theme,
+            Dropdown {
+                open: false,
+                selected: DropdownItem {
+                    label: "px".to_string(),
+                    value: Box::new(ValTypes::Px),
+                },
+            },
+            ValTypeLink::MarginRight,
+        );
+        let margin_top = create_val_thing(
+            &mut commands,
+            &icons,
+            &theme,
+            Dropdown {
+                open: false,
+                selected: DropdownItem {
+                    label: "px".to_string(),
+                    value: Box::new(ValTypes::Px),
+                },
+            },
+            ValTypeLink::MarginTop,
+        );
+        let margin_bottom = create_val_thing(
+            &mut commands,
+            &icons,
+            &theme,
+            Dropdown {
+                open: false,
+                selected: DropdownItem {
+                    label: "px".to_string(),
+                    value: Box::new(ValTypes::Px),
+                },
+            },
+            ValTypeLink::MarginBottom,
+        );
+        let padding_left = create_val_thing(
+            &mut commands,
+            &icons,
+            &theme,
+            Dropdown {
+                open: false,
+                selected: DropdownItem {
+                    label: "px".to_string(),
+                    value: Box::new(ValTypes::Px),
+                },
+            },
+            ValTypeLink::PaddingLeft,
+        );
+        let padding_right = create_val_thing(
+            &mut commands,
+            &icons,
+            &theme,
+            Dropdown {
+                open: false,
+                selected: DropdownItem {
+                    label: "px".to_string(),
+                    value: Box::new(ValTypes::Px),
+                },
+            },
+            ValTypeLink::PaddingRight,
+        );
+        let padding_top = create_val_thing(
+            &mut commands,
+            &icons,
+            &theme,
+            Dropdown {
+                open: false,
+                selected: DropdownItem {
+                    label: "px".to_string(),
+                    value: Box::new(ValTypes::Px),
+                },
+            },
+            ValTypeLink::PaddingTop,
+        );
+        let padding_bottom = create_val_thing(
+            &mut commands,
+            &icons,
+            &theme,
+            Dropdown {
+                open: false,
+                selected: DropdownItem {
+                    label: "px".to_string(),
+                    value: Box::new(ValTypes::Px),
+                },
+            },
+            ValTypeLink::PaddingBottom,
+        );
+        let border_left = create_val_thing(
+            &mut commands,
+            &icons,
+            &theme,
+            Dropdown {
+                open: false,
+                selected: DropdownItem {
+                    label: "px".to_string(),
+                    value: Box::new(ValTypes::Px),
+                },
+            },
+            ValTypeLink::BorderLeft,
+        );
+        let border_right = create_val_thing(
+            &mut commands,
+            &icons,
+            &theme,
+            Dropdown {
+                open: false,
+                selected: DropdownItem {
+                    label: "px".to_string(),
+                    value: Box::new(ValTypes::Px),
+                },
+            },
+            ValTypeLink::BorderRight,
+        );
+        let border_top = create_val_thing(
+            &mut commands,
+            &icons,
+            &theme,
+            Dropdown {
+                open: false,
+                selected: DropdownItem {
+                    label: "px".to_string(),
+                    value: Box::new(ValTypes::Px),
+                },
+            },
+            ValTypeLink::BorderTop,
+        );
+        let border_bottom = create_val_thing(
+            &mut commands,
+            &icons,
+            &theme,
+            Dropdown {
+                open: false,
+                selected: DropdownItem {
+                    label: "px".to_string(),
+                    value: Box::new(ValTypes::Px),
+                },
+            },
+            ValTypeLink::BorderBottom,
+        );
+        let position_left = create_val_thing(
+            &mut commands,
+            &icons,
+            &theme,
+            Dropdown {
+                open: false,
+                selected: DropdownItem {
+                    label: "px".to_string(),
+                    value: Box::new(ValTypes::Px),
+                },
+            },
+            ValTypeLink::PositionLeft,
+        );
+        let position_right = create_val_thing(
+            &mut commands,
+            &icons,
+            &theme,
+            Dropdown {
+                open: false,
+                selected: DropdownItem {
+                    label: "px".to_string(),
+                    value: Box::new(ValTypes::Px),
+                },
+            },
+            ValTypeLink::PositionRight,
+        );
+        let position_top = create_val_thing(
+            &mut commands,
+            &icons,
+            &theme,
+            Dropdown {
+                open: false,
+                selected: DropdownItem {
+                    label: "px".to_string(),
+                    value: Box::new(ValTypes::Px),
+                },
+            },
+            ValTypeLink::PositionTop,
+        );
+        let position_bottom = create_val_thing(
+            &mut commands,
+            &icons,
+            &theme,
+            Dropdown {
+                open: false,
+                selected: DropdownItem {
+                    label: "px".to_string(),
+                    value: Box::new(ValTypes::Px),
+                },
+            },
+            ValTypeLink::PositionBottom,
+        );
+        let width = create_val_thing(
+            &mut commands,
+            &icons,
+            &theme,
+            Dropdown {
+                open: false,
+                selected: DropdownItem {
+                    label: "px".to_string(),
+                    value: Box::new(ValTypes::Px),
+                },
+            },
+            ValTypeLink::Width,
+        );
+        let min_width = create_val_thing(
+            &mut commands,
+            &icons,
+            &theme,
+            Dropdown {
+                open: false,
+                selected: DropdownItem {
+                    label: "px".to_string(),
+                    value: Box::new(ValTypes::Px),
+                },
+            },
+            ValTypeLink::MinWidth,
+        );
+        let max_width = create_val_thing(
+            &mut commands,
+            &icons,
+            &theme,
+            Dropdown {
+                open: false,
+                selected: DropdownItem {
+                    label: "px".to_string(),
+                    value: Box::new(ValTypes::Px),
+                },
+            },
+            ValTypeLink::MaxWidth,
+        );
+        let height = create_val_thing(
+            &mut commands,
+            &icons,
+            &theme,
+            Dropdown {
+                open: false,
+                selected: DropdownItem {
+                    label: "px".to_string(),
+                    value: Box::new(ValTypes::Px),
+                },
+            },
+            ValTypeLink::Height,
+        );
+        let min_height = create_val_thing(
+            &mut commands,
+            &icons,
+            &theme,
+            Dropdown {
+                open: false,
+                selected: DropdownItem {
+                    label: "px".to_string(),
+                    value: Box::new(ValTypes::Px),
+                },
+            },
+            ValTypeLink::MinHeight,
+        );
+        let max_height = create_val_thing(
+            &mut commands,
+            &icons,
+            &theme,
+            Dropdown {
+                open: false,
+                selected: DropdownItem {
+                    label: "px".to_string(),
+                    value: Box::new(ValTypes::Px),
+                },
+            },
+            ValTypeLink::MaxHeight,
+        );
+        let width_title = commands
+            .spawn(TextBundle {
+                text: Text::from_section(
+                    "width".to_string(),
+                    TextStyle {
+                        font: theme.font.clone(),
+                        font_size: theme.input.size,
+                        color: theme.input.color,
+                    },
+                ),
+                ..Default::default()
+            })
+            .id();
+        let height_title = commands
+            .spawn(TextBundle {
+                text: Text::from_section(
+                    "height".to_string(),
+                    TextStyle {
+                        font: theme.font.clone(),
+                        font_size: theme.input.size,
+                        color: theme.input.color,
+                    },
+                ),
+                ..Default::default()
+            })
+            .id();
+        let min_title = commands
+            .spawn(TextBundle {
+                text: Text::from_section(
+                    "min".to_string(),
+                    TextStyle {
+                        font: theme.font.clone(),
+                        font_size: theme.input.size,
+                        color: theme.input.color,
+                    },
+                ),
+                ..Default::default()
+            })
+            .id();
+        let max_title = commands
+            .spawn(TextBundle {
+                text: Text::from_section(
+                    "max".to_string(),
+                    TextStyle {
+                        font: theme.font.clone(),
+                        font_size: theme.input.size,
+                        color: theme.input.color,
+                    },
+                ),
+                ..Default::default()
+            })
+            .id();
+
+        let margin_title = commands
+            .spawn(TextBundle {
+                text: Text::from_section(
+                    "margin".to_string(),
+                    TextStyle {
+                        font: theme.font.clone(),
+                        font_size: theme.input.size,
+                        color: theme.input.color,
+                    },
+                ),
+                ..Default::default()
+            })
+            .id();
+        let padding_title = commands
+            .spawn(TextBundle {
+                text: Text::from_section(
+                    "padding".to_string(),
+                    TextStyle {
+                        font: theme.font.clone(),
+                        font_size: theme.input.size,
+                        color: theme.input.color,
+                    },
+                ),
+                ..Default::default()
+            })
+            .id();
+        let border_title = commands
+            .spawn(TextBundle {
+                text: Text::from_section(
+                    "border".to_string(),
+                    TextStyle {
+                        font: theme.font.clone(),
+                        font_size: theme.input.size,
+                        color: theme.input.color,
+                    },
+                ),
+                ..Default::default()
+            })
+            .id();
+        let position_title = commands
+            .spawn(TextBundle {
+                text: Text::from_section(
+                    "position".to_string(),
+                    TextStyle {
+                        font: theme.font.clone(),
+                        font_size: theme.input.size,
+                        color: theme.input.color,
+                    },
+                ),
+                ..Default::default()
+            })
+            .id();
+        let left_title = commands
+            .spawn(TextBundle {
+                text: Text::from_section(
+                    "left".to_string(),
+                    TextStyle {
+                        font: theme.font.clone(),
+                        font_size: theme.input.size,
+                        color: theme.input.color,
+                    },
+                ),
+                ..Default::default()
+            })
+            .id();
+        let right_title = commands
+            .spawn(TextBundle {
+                text: Text::from_section(
+                    "right".to_string(),
+                    TextStyle {
+                        font: theme.font.clone(),
+                        font_size: theme.input.size,
+                        color: theme.input.color,
+                    },
+                ),
+                ..Default::default()
+            })
+            .id();
+        let top_title = commands
+            .spawn(TextBundle {
+                text: Text::from_section(
+                    "top".to_string(),
+                    TextStyle {
+                        font: theme.font.clone(),
+                        font_size: theme.input.size,
+                        color: theme.input.color,
+                    },
+                ),
+                ..Default::default()
+            })
+            .id();
+        let bottom_title = commands
+            .spawn(TextBundle {
+                text: Text::from_section(
+                    "bottom".to_string(),
+                    TextStyle {
+                        font: theme.font.clone(),
+                        font_size: theme.input.size,
+                        color: theme.input.color,
+                    },
+                ),
+                ..Default::default()
+            })
+            .id();
+        let empty = commands.spawn(NodeBundle::default()).id();
+        let empty2 = commands.spawn(NodeBundle::default()).id();
+        let empty3 = commands.spawn(NodeBundle::default()).id();
+        let mut dd_container = commands.spawn((
             NodeBundle {
-                background_color: AMBER_500.into(),
+                background_color: theme.background.into(),
                 style: Style {
-                    left: Val::Px(300.0),
-                    top: Val::Px(300.0),
-                    width: Val::Px(150.0),
-                    height: Val::Px(50.0),
-                    margin: UiRect::all(Val::Percent(12.0)),
-                    padding: UiRect::all(Val::Auto),
-                    border: UiRect::all(Val::Px(1.0)),
+                    flex_direction: FlexDirection::Column,
+                    align_items: AlignItems::FlexEnd,
+                    position_type: PositionType::Absolute,
+                    padding: UiRect::all(Val::Px(12.0)),
+                    row_gap: Val::Px(12.0),
+                    width: Val::Px(500.0),
+                    height: Val::Percent(100.0),
+                    right: Val::Px(0.0),
+                    top: Val::Px(0.0),
                     ..default()
                 },
                 ..default()
             },
-            Name::new("OrangeSquare"),
-            TargetCamera(cam)
-        ))
-        .with_children(|builder| {
-            builder.spawn((
+            Name::new("StylePanel"),
+        ));
+        // dd_container.push_children(&[position_thing]);
+        dd_container.with_children(|builder| {
+            let mut ui_rect_grid = builder.spawn((
                 NodeBundle {
                     style: Style {
-                        width: Val::Percent(100.0),
-                        justify_content: JustifyContent::Center,
+                        display: Display::Grid,
+                        grid_template_columns: RepeatedGridTrack::min_content(5),
+                        grid_template_rows: RepeatedGridTrack::min_content(5),
+                        row_gap: Val::Px(12.0),
+                        column_gap: Val::Px(12.0),
                         ..default()
                     },
                     ..default()
                 },
-                Name::new("ChildSquare"),
+                Name::new("UiRectGrid"),
             ));
-        })
-        .id();
-    let margin_left = create_val_thing(
-        &mut commands,
-        &icons,
-        &theme,
-        Dropdown {
-            open: false,
-            selected: DropdownItem {
-                label: "px".to_string(),
-                value: ValTypes::Px.into(),
-            },
-        },
-        ValTypeLink::MarginLeft,
-    );
-    let margin_right = create_val_thing(
-        &mut commands,
-        &icons,
-        &theme,
-        Dropdown {
-            open: false,
-            selected: DropdownItem {
-                label: "px".to_string(),
-                value: ValTypes::Px.into(),
-            },
-        },
-        ValTypeLink::MarginRight,
-    );
-    let margin_top = create_val_thing(
-        &mut commands,
-        &icons,
-        &theme,
-        Dropdown {
-            open: false,
-            selected: DropdownItem {
-                label: "px".to_string(),
-                value: ValTypes::Px.into(),
-            },
-        },
-        ValTypeLink::MarginTop,
-    );
-    let margin_bottom = create_val_thing(
-        &mut commands,
-        &icons,
-        &theme,
-        Dropdown {
-            open: false,
-            selected: DropdownItem {
-                label: "px".to_string(),
-                value: ValTypes::Px.into(),
-            },
-        },
-        ValTypeLink::MarginBottom,
-    );
-    let padding_left = create_val_thing(
-        &mut commands,
-        &icons,
-        &theme,
-        Dropdown {
-            open: false,
-            selected: DropdownItem {
-                label: "px".to_string(),
-                value: ValTypes::Px.into(),
-            },
-        },
-        ValTypeLink::PaddingLeft,
-    );
-    let padding_right = create_val_thing(
-        &mut commands,
-        &icons,
-        &theme,
-        Dropdown {
-            open: false,
-            selected: DropdownItem {
-                label: "px".to_string(),
-                value: ValTypes::Px.into(),
-            },
-        },
-        ValTypeLink::PaddingRight,
-    );
-    let padding_top = create_val_thing(
-        &mut commands,
-        &icons,
-        &theme,
-        Dropdown {
-            open: false,
-            selected: DropdownItem {
-                label: "px".to_string(),
-                value: ValTypes::Px.into(),
-            },
-        },
-        ValTypeLink::PaddingTop,
-    );
-    let padding_bottom = create_val_thing(
-        &mut commands,
-        &icons,
-        &theme,
-        Dropdown {
-            open: false,
-            selected: DropdownItem {
-                label: "px".to_string(),
-                value: ValTypes::Px.into(),
-            },
-        },
-        ValTypeLink::PaddingBottom,
-    );
-    let border_left = create_val_thing(
-        &mut commands,
-        &icons,
-        &theme,
-        Dropdown {
-            open: false,
-            selected: DropdownItem {
-                label: "px".to_string(),
-                value: ValTypes::Px.into(),
-            },
-        },
-        ValTypeLink::BorderLeft,
-    );
-    let border_right = create_val_thing(
-        &mut commands,
-        &icons,
-        &theme,
-        Dropdown {
-            open: false,
-            selected: DropdownItem {
-                label: "px".to_string(),
-                value: ValTypes::Px.into(),
-            },
-        },
-        ValTypeLink::BorderRight,
-    );
-    let border_top = create_val_thing(
-        &mut commands,
-        &icons,
-        &theme,
-        Dropdown {
-            open: false,
-            selected: DropdownItem {
-                label: "px".to_string(),
-                value: ValTypes::Px.into(),
-            },
-        },
-        ValTypeLink::BorderTop,
-    );
-    let border_bottom = create_val_thing(
-        &mut commands,
-        &icons,
-        &theme,
-        Dropdown {
-            open: false,
-            selected: DropdownItem {
-                label: "px".to_string(),
-                value: ValTypes::Px.into(),
-            },
-        },
-        ValTypeLink::BorderBottom,
-    );
-    let position_left = create_val_thing(
-        &mut commands,
-        &icons,
-        &theme,
-        Dropdown {
-            open: false,
-            selected: DropdownItem {
-                label: "px".to_string(),
-                value: ValTypes::Px.into(),
-            },
-        },
-        ValTypeLink::PositionLeft,
-    );
-    let position_right = create_val_thing(
-        &mut commands,
-        &icons,
-        &theme,
-        Dropdown {
-            open: false,
-            selected: DropdownItem {
-                label: "px".to_string(),
-                value: ValTypes::Px.into(),
-            },
-        },
-        ValTypeLink::PositionRight,
-    );
-    let position_top = create_val_thing(
-        &mut commands,
-        &icons,
-        &theme,
-        Dropdown {
-            open: false,
-            selected: DropdownItem {
-                label: "px".to_string(),
-                value: ValTypes::Px.into(),
-            },
-        },
-        ValTypeLink::PositionTop,
-    );
-    let position_bottom = create_val_thing(
-        &mut commands,
-        &icons,
-        &theme,
-        Dropdown {
-            open: false,
-            selected: DropdownItem {
-                label: "px".to_string(),
-                value: ValTypes::Px.into(),
-            },
-        },
-        ValTypeLink::PositionBottom,
-    );
-    let width = create_val_thing(
-        &mut commands,
-        &icons,
-        &theme,
-        Dropdown {
-            open: false,
-            selected: DropdownItem {
-                label: "px".to_string(),
-                value: ValTypes::Px.into(),
-            },
-        },
-        ValTypeLink::Width,
-    );
-    let min_width = create_val_thing(
-        &mut commands,
-        &icons,
-        &theme,
-        Dropdown {
-            open: false,
-            selected: DropdownItem {
-                label: "px".to_string(),
-                value: ValTypes::Px.into(),
-            },
-        },
-        ValTypeLink::MinWidth,
-    );
-    let max_width = create_val_thing(
-        &mut commands,
-        &icons,
-        &theme,
-        Dropdown {
-            open: false,
-            selected: DropdownItem {
-                label: "px".to_string(),
-                value: ValTypes::Px.into(),
-            },
-        },
-        ValTypeLink::MaxWidth,
-    );
-    let height = create_val_thing(
-        &mut commands,
-        &icons,
-        &theme,
-        Dropdown {
-            open: false,
-            selected: DropdownItem {
-                label: "px".to_string(),
-                value: ValTypes::Px.into(),
-            },
-        },
-        ValTypeLink::Height,
-    );
-    let min_height = create_val_thing(
-        &mut commands,
-        &icons,
-        &theme,
-        Dropdown {
-            open: false,
-            selected: DropdownItem {
-                label: "px".to_string(),
-                value: ValTypes::Px.into(),
-            },
-        },
-        ValTypeLink::MinHeight,
-    );
-    let max_height = create_val_thing(
-        &mut commands,
-        &icons,
-        &theme,
-        Dropdown {
-            open: false,
-            selected: DropdownItem {
-                label: "px".to_string(),
-                value: ValTypes::Px.into(),
-            },
-        },
-        ValTypeLink::MaxHeight,
-    );
-    let width_title = commands
-        .spawn(TextBundle {
-            text: Text::from_section(
-                "width".to_string(),
-                TextStyle {
-                    font: theme.font.clone(),
-                    font_size: theme.input.size,
-                    color: theme.input.color,
+            ui_rect_grid.push_children(&[
+                // title
+                empty,
+                left_title,
+                right_title,
+                top_title,
+                bottom_title,
+                //margin
+                margin_title,
+                margin_left,
+                margin_right,
+                margin_top,
+                margin_bottom,
+                //padding
+                padding_title,
+                padding_left,
+                padding_right,
+                padding_top,
+                padding_bottom,
+                //border
+                border_title,
+                border_left,
+                border_right,
+                border_top,
+                border_bottom,
+                //position
+                position_title,
+                position_left,
+                position_right,
+                position_top,
+                position_bottom,
+            ]);
+            let mut ui_rect_grid = builder.spawn((
+                NodeBundle {
+                    style: Style {
+                        display: Display::Grid,
+                        grid_template_columns: RepeatedGridTrack::min_content(4),
+                        grid_template_rows: RepeatedGridTrack::min_content(3),
+                        row_gap: Val::Px(12.0),
+                        column_gap: Val::Px(12.0),
+                        ..default()
+                    },
+                    ..default()
                 },
-            ),
-            ..Default::default()
-        })
-        .id();
-    let height_title = commands
-        .spawn(TextBundle {
-            text: Text::from_section(
-                "height".to_string(),
-                TextStyle {
-                    font: theme.font.clone(),
-                    font_size: theme.input.size,
-                    color: theme.input.color,
-                },
-            ),
-            ..Default::default()
-        })
-        .id();
-    let min_title = commands
-        .spawn(TextBundle {
-            text: Text::from_section(
-                "min".to_string(),
-                TextStyle {
-                    font: theme.font.clone(),
-                    font_size: theme.input.size,
-                    color: theme.input.color,
-                },
-            ),
-            ..Default::default()
-        })
-        .id();
-    let max_title = commands
-        .spawn(TextBundle {
-            text: Text::from_section(
-                "max".to_string(),
-                TextStyle {
-                    font: theme.font.clone(),
-                    font_size: theme.input.size,
-                    color: theme.input.color,
-                },
-            ),
-            ..Default::default()
-        })
-        .id();
+                Name::new("Dimensions"),
+            ));
+            ui_rect_grid.push_children(&[
+                empty2,
+                empty3,
+                min_title,
+                max_title,
+                //width
+                width_title,
+                width,
+                min_width,
+                max_width,
+                //height
+                height_title,
+                height,
+                min_height,
+                max_height,
+            ]);
+        });
+        spacing(&mut spawn_ui_event_writer, &theme, dd_container.id().into());
+        active_style_inspection.entity = entity_id.into();
+    }
 
-    let margin_title = commands
-        .spawn(TextBundle {
-            text: Text::from_section(
-                "margin".to_string(),
-                TextStyle {
-                    font: theme.font.clone(),
-                    font_size: theme.input.size,
-                    color: theme.input.color,
-                },
-            ),
-            ..Default::default()
-        })
-        .id();
-    let padding_title = commands
-        .spawn(TextBundle {
-            text: Text::from_section(
-                "padding".to_string(),
-                TextStyle {
-                    font: theme.font.clone(),
-                    font_size: theme.input.size,
-                    color: theme.input.color,
-                },
-            ),
-            ..Default::default()
-        })
-        .id();
-    let border_title = commands
-        .spawn(TextBundle {
-            text: Text::from_section(
-                "border".to_string(),
-                TextStyle {
-                    font: theme.font.clone(),
-                    font_size: theme.input.size,
-                    color: theme.input.color,
-                },
-            ),
-            ..Default::default()
-        })
-        .id();
-    let position_title = commands
-        .spawn(TextBundle {
-            text: Text::from_section(
-                "position".to_string(),
-                TextStyle {
-                    font: theme.font.clone(),
-                    font_size: theme.input.size,
-                    color: theme.input.color,
-                },
-            ),
-            ..Default::default()
-        })
-        .id();
-    let left_title = commands
-        .spawn(TextBundle {
-            text: Text::from_section(
-                "left".to_string(),
-                TextStyle {
-                    font: theme.font.clone(),
-                    font_size: theme.input.size,
-                    color: theme.input.color,
-                },
-            ),
-            ..Default::default()
-        })
-        .id();
-    let right_title = commands
-        .spawn(TextBundle {
-            text: Text::from_section(
-                "right".to_string(),
-                TextStyle {
-                    font: theme.font.clone(),
-                    font_size: theme.input.size,
-                    color: theme.input.color,
-                },
-            ),
-            ..Default::default()
-        })
-        .id();
-    let top_title = commands
-        .spawn(TextBundle {
-            text: Text::from_section(
-                "top".to_string(),
-                TextStyle {
-                    font: theme.font.clone(),
-                    font_size: theme.input.size,
-                    color: theme.input.color,
-                },
-            ),
-            ..Default::default()
-        })
-        .id();
-    let bottom_title = commands
-        .spawn(TextBundle {
-            text: Text::from_section(
-                "bottom".to_string(),
-                TextStyle {
-                    font: theme.font.clone(),
-                    font_size: theme.input.size,
-                    color: theme.input.color,
-                },
-            ),
-            ..Default::default()
-        })
-        .id();
-    let empty = commands.spawn(NodeBundle::default()).id();
-    let empty2 = commands.spawn(NodeBundle::default()).id();
-    let empty3 = commands.spawn(NodeBundle::default()).id();
-    let mut dd_container = commands.spawn((
-        NodeBundle {
-            background_color: theme.background.into(),
-            style: Style {
-                flex_direction: FlexDirection::Column,
-                align_items: AlignItems::FlexEnd,
-                position_type: PositionType::Absolute,
-                padding: UiRect::all(Val::Px(12.0)),
-                row_gap: Val::Px(12.0),
-                width: Val::Px(500.0),
-                height: Val::Percent(100.0),
-                right: Val::Px(0.0),
-                top: Val::Px(0.0),
-                ..default()
-            },
-            ..default()
-        },
-        Name::new("StylePanel"),
-    ));
-    dd_container.push_children(&[position_thing]);
-    dd_container.with_children(|builder| {
-        let mut ui_rect_grid = builder.spawn((
-            NodeBundle {
-                style: Style {
-                    display: Display::Grid,
-                    grid_template_columns: RepeatedGridTrack::min_content(5),
-                    grid_template_rows: RepeatedGridTrack::min_content(5),
-                    row_gap: Val::Px(12.0),
-                    column_gap: Val::Px(12.0),
-                    ..default()
-                },
-                ..default()
-            },
-            Name::new("UiRectGrid"),
-        ));
-        ui_rect_grid.push_children(&[
-            // title
-            empty,
-            left_title,
-            right_title,
-            top_title,
-            bottom_title,
-            //margin
-            margin_title,
-            margin_left,
-            margin_right,
-            margin_top,
-            margin_bottom,
-            //padding
-            padding_title,
-            padding_left,
-            padding_right,
-            padding_top,
-            padding_bottom,
-            //border
-            border_title,
-            border_left,
-            border_right,
-            border_top,
-            border_bottom,
-            //position
-            position_title,
-            position_left,
-            position_right,
-            position_top,
-            position_bottom,
-        ]);
-        let mut ui_rect_grid = builder.spawn((
-            NodeBundle {
-                style: Style {
-                    display: Display::Grid,
-                    grid_template_columns: RepeatedGridTrack::min_content(4),
-                    grid_template_rows: RepeatedGridTrack::min_content(3),
-                    row_gap: Val::Px(12.0),
-                    column_gap: Val::Px(12.0),
-                    ..default()
-                },
-                ..default()
-            },
-            Name::new("Dimensions"),
-        ));
-        ui_rect_grid.push_children(&[
-            empty2,
-            empty3,
-            min_title,
-            max_title,
-            //width
-            width_title,
-            width,
-            min_width,
-            max_width,
-            //height
-            height_title,
-            height,
-            min_height,
-            max_height,
-        ]);
-    });
-    active_style_inspection.entity = entity_id.into();
+    system_state.apply(world);
 }
 fn get_val_type(val: Val) -> ValTypes {
     match val {
@@ -681,12 +718,13 @@ fn get_calculated_pixel_val(
         Val::Auto => 0.0,
     }
 }
+
 fn update_style_panel(
     style_inputs_q: Query<(&ValTypeLink, Entity)>,
     active_style_inspection: Res<ActiveStyleInspection>,
     children_q: Query<&Children>,
-    mut val_input_dropdown_q: Query<(&mut Dropdown<ValTypes>, Entity)>,
-    dropdown_items_q: Query<&DropdownItem<ValTypes>>,
+    mut val_input_dropdown_q: Query<(&mut Dropdown, Entity)>,
+    dropdown_items_q: Query<&DropdownItem>,
     mut text_input_q: Query<(&mut TextInput)>,
     style_q: Query<&Style>,
 ) {
@@ -726,10 +764,16 @@ fn update_style_panel(
                     if let Ok((mut dropdown, dropdown_e)) = val_input_dropdown_q.get_mut(child) {
                         let selected = children_q.iter_descendants(dropdown_e).find_map(|child| {
                             if let Ok(dropdown_item) = dropdown_items_q.get(child) {
-                                if val_type == *dropdown_item.value {
-                                    return Some(dropdown_item.clone());
+                                if let Some(dropdown_val_type) =
+                                    dropdown_item.value.downcast_ref::<ValTypes>()
+                                {
+                                    if val_type == *dropdown_val_type {
+                                        return Some(DropdownItem {
+                                            label: dropdown_item.label.clone(),
+                                            value: Box::new(dropdown_val_type.clone()),
+                                        });
+                                    }
                                 }
-                            } else {
                             }
                             None
                         });
@@ -807,7 +851,7 @@ fn update_style_property(
     mut style_q: Query<&mut Style>,
     active_style_inspection: Res<ActiveStyleInspection>,
     val_input_q: Query<(&ValInput, &ValTypeLink, Entity)>,
-    val_input_dropdown_q: Query<(Ref<Dropdown<ValTypes>>, Entity)>,
+    val_input_dropdown_q: Query<(Ref<Dropdown>, Entity)>,
     text_input_q: Query<(Ref<TextInput>, Entity)>,
     children_q: Query<&Children>,
     parent_q: Query<&Parent>,
@@ -827,7 +871,9 @@ fn update_style_property(
                                 .and_then(|e| style_q.get_mut(e).ok())
                             {
                                 let input_val = text_input.value.parse::<f32>().unwrap_or_default();
-                                let val = match *dropdown.selected.value {
+                                let mut val_type = ValTypes::default();
+                                val_type.apply(&*dropdown.selected.value);
+                                let val = match val_type {
                                     ValTypes::Px => Val::Px(input_val),
                                     ValTypes::Percent => Val::Percent(input_val),
                                     ValTypes::Vw => Val::Vw(input_val),
@@ -871,7 +917,7 @@ fn update_spacing_markers(
     mut text_q: Query<&mut Text>,
     style_q: Query<(&Style, &Node, &GlobalTransform, Option<&Parent>)>,
     active_style_inspection: Res<ActiveStyleInspection>,
-    spacing_markers_q: Query<(&SpacingMarker, &SpacingMarkerPosition, Entity)>,
+    spacing_markers_q: Query<(&SpacingMarker, &SpacingMarkerPosition, &Children)>,
     dimension_markers_q: Query<Entity, With<SpacingDimensionsMarker>>,
     windows_q: Query<(&Window)>,
 ) {
@@ -894,140 +940,142 @@ fn update_spacing_markers(
         }
         spacing_markers_q
             .iter()
-            .for_each(|(spacing_type, position, e)| {
-                let mut text = text_q.get_mut(e).unwrap();
-                let new = match (spacing_type, position) {
-                    (SpacingMarker::Position, SpacingMarkerPosition::Left) => {
-                        get_calculated_pixel_val(
-                            style.left,
-                            parent_size,
-                            window_size,
-                            CalculateDirection::Horizontal,
-                        )
-                    }
-                    (SpacingMarker::Position, SpacingMarkerPosition::Right) => {
-                        get_calculated_pixel_val(
-                            style.right,
-                            parent_size,
-                            window_size,
-                            CalculateDirection::Horizontal,
-                        )
-                    }
-                    (SpacingMarker::Position, SpacingMarkerPosition::Top) => {
-                        get_calculated_pixel_val(
-                            style.top,
-                            parent_size,
-                            window_size,
-                            CalculateDirection::Vertical,
-                        )
-                    }
-                    (SpacingMarker::Position, SpacingMarkerPosition::Bottom) => {
-                        get_calculated_pixel_val(
-                            style.bottom,
-                            parent_size,
-                            window_size,
-                            CalculateDirection::Vertical,
-                        )
-                    }
+            .for_each(|(spacing_type, position, children)| {
+                for e in children.iter() {
+                    let mut text = text_q.get_mut(*e).unwrap();
+                    let new = match (spacing_type, position) {
+                        (SpacingMarker::Position, SpacingMarkerPosition::Left) => {
+                            get_calculated_pixel_val(
+                                style.left,
+                                parent_size,
+                                window_size,
+                                CalculateDirection::Horizontal,
+                            )
+                        }
+                        (SpacingMarker::Position, SpacingMarkerPosition::Right) => {
+                            get_calculated_pixel_val(
+                                style.right,
+                                parent_size,
+                                window_size,
+                                CalculateDirection::Horizontal,
+                            )
+                        }
+                        (SpacingMarker::Position, SpacingMarkerPosition::Top) => {
+                            get_calculated_pixel_val(
+                                style.top,
+                                parent_size,
+                                window_size,
+                                CalculateDirection::Vertical,
+                            )
+                        }
+                        (SpacingMarker::Position, SpacingMarkerPosition::Bottom) => {
+                            get_calculated_pixel_val(
+                                style.bottom,
+                                parent_size,
+                                window_size,
+                                CalculateDirection::Vertical,
+                            )
+                        }
 
-                    (SpacingMarker::Margin, SpacingMarkerPosition::Left) => {
-                        get_calculated_pixel_val(
-                            style.margin.left,
-                            parent_size,
-                            window_size,
-                            CalculateDirection::Horizontal,
-                        )
-                    }
-                    (SpacingMarker::Margin, SpacingMarkerPosition::Right) => {
-                        get_calculated_pixel_val(
-                            style.margin.right,
-                            parent_size,
-                            window_size,
-                            CalculateDirection::Horizontal,
-                        )
-                    }
-                    (SpacingMarker::Margin, SpacingMarkerPosition::Top) => {
-                        get_calculated_pixel_val(
-                            style.margin.top,
-                            parent_size,
-                            window_size,
-                            CalculateDirection::Vertical,
-                        )
-                    }
-                    (SpacingMarker::Margin, SpacingMarkerPosition::Bottom) => {
-                        get_calculated_pixel_val(
-                            style.margin.bottom,
-                            parent_size,
-                            window_size,
-                            CalculateDirection::Vertical,
-                        )
-                    }
-                    (SpacingMarker::Border, SpacingMarkerPosition::Left) => {
-                        get_calculated_pixel_val(
-                            style.border.left,
-                            parent_size,
-                            window_size,
-                            CalculateDirection::Horizontal,
-                        )
-                    }
-                    (SpacingMarker::Border, SpacingMarkerPosition::Right) => {
-                        get_calculated_pixel_val(
-                            style.border.right,
-                            parent_size,
-                            window_size,
-                            CalculateDirection::Horizontal,
-                        )
-                    }
-                    (SpacingMarker::Border, SpacingMarkerPosition::Top) => {
-                        get_calculated_pixel_val(
-                            style.border.top,
-                            parent_size,
-                            window_size,
-                            CalculateDirection::Vertical,
-                        )
-                    }
-                    (SpacingMarker::Border, SpacingMarkerPosition::Bottom) => {
-                        get_calculated_pixel_val(
-                            style.border.bottom,
-                            parent_size,
-                            window_size,
-                            CalculateDirection::Vertical,
-                        )
-                    }
-                    (SpacingMarker::Padding, SpacingMarkerPosition::Left) => {
-                        get_calculated_pixel_val(
-                            style.padding.left,
-                            parent_size,
-                            window_size,
-                            CalculateDirection::Horizontal,
-                        )
-                    }
-                    (SpacingMarker::Padding, SpacingMarkerPosition::Right) => {
-                        get_calculated_pixel_val(
-                            style.padding.right,
-                            parent_size,
-                            window_size,
-                            CalculateDirection::Horizontal,
-                        )
-                    }
-                    (SpacingMarker::Padding, SpacingMarkerPosition::Top) => {
-                        get_calculated_pixel_val(
-                            style.padding.top,
-                            parent_size,
-                            window_size,
-                            CalculateDirection::Vertical,
-                        )
-                    }
-                    (SpacingMarker::Padding, SpacingMarkerPosition::Bottom) => {
-                        get_calculated_pixel_val(
-                            style.padding.bottom,
-                            parent_size,
-                            window_size,
-                            CalculateDirection::Vertical,
-                        )
-                    }
-                };
-                text.sections[0].value = format!("{}", new);
+                        (SpacingMarker::Margin, SpacingMarkerPosition::Left) => {
+                            get_calculated_pixel_val(
+                                style.margin.left,
+                                parent_size,
+                                window_size,
+                                CalculateDirection::Horizontal,
+                            )
+                        }
+                        (SpacingMarker::Margin, SpacingMarkerPosition::Right) => {
+                            get_calculated_pixel_val(
+                                style.margin.right,
+                                parent_size,
+                                window_size,
+                                CalculateDirection::Horizontal,
+                            )
+                        }
+                        (SpacingMarker::Margin, SpacingMarkerPosition::Top) => {
+                            get_calculated_pixel_val(
+                                style.margin.top,
+                                parent_size,
+                                window_size,
+                                CalculateDirection::Vertical,
+                            )
+                        }
+                        (SpacingMarker::Margin, SpacingMarkerPosition::Bottom) => {
+                            get_calculated_pixel_val(
+                                style.margin.bottom,
+                                parent_size,
+                                window_size,
+                                CalculateDirection::Vertical,
+                            )
+                        }
+                        (SpacingMarker::Border, SpacingMarkerPosition::Left) => {
+                            get_calculated_pixel_val(
+                                style.border.left,
+                                parent_size,
+                                window_size,
+                                CalculateDirection::Horizontal,
+                            )
+                        }
+                        (SpacingMarker::Border, SpacingMarkerPosition::Right) => {
+                            get_calculated_pixel_val(
+                                style.border.right,
+                                parent_size,
+                                window_size,
+                                CalculateDirection::Horizontal,
+                            )
+                        }
+                        (SpacingMarker::Border, SpacingMarkerPosition::Top) => {
+                            get_calculated_pixel_val(
+                                style.border.top,
+                                parent_size,
+                                window_size,
+                                CalculateDirection::Vertical,
+                            )
+                        }
+                        (SpacingMarker::Border, SpacingMarkerPosition::Bottom) => {
+                            get_calculated_pixel_val(
+                                style.border.bottom,
+                                parent_size,
+                                window_size,
+                                CalculateDirection::Vertical,
+                            )
+                        }
+                        (SpacingMarker::Padding, SpacingMarkerPosition::Left) => {
+                            get_calculated_pixel_val(
+                                style.padding.left,
+                                parent_size,
+                                window_size,
+                                CalculateDirection::Horizontal,
+                            )
+                        }
+                        (SpacingMarker::Padding, SpacingMarkerPosition::Right) => {
+                            get_calculated_pixel_val(
+                                style.padding.right,
+                                parent_size,
+                                window_size,
+                                CalculateDirection::Horizontal,
+                            )
+                        }
+                        (SpacingMarker::Padding, SpacingMarkerPosition::Top) => {
+                            get_calculated_pixel_val(
+                                style.padding.top,
+                                parent_size,
+                                window_size,
+                                CalculateDirection::Vertical,
+                            )
+                        }
+                        (SpacingMarker::Padding, SpacingMarkerPosition::Bottom) => {
+                            get_calculated_pixel_val(
+                                style.padding.bottom,
+                                parent_size,
+                                window_size,
+                                CalculateDirection::Vertical,
+                            )
+                        }
+                    };
+                    text.sections[0].value = format!("{}", new);
+                }
             });
     }
 }
@@ -1035,219 +1083,157 @@ const SPACING_MARGIN: f32 = 12.0;
 const SPACING_MARGIN_Y: f32 = 6.0;
 fn created_nested_spacing_indicator(
     type_of_spacing: &str,
-    builder: &mut Commands,
     theme: &Theme,
     box_color: &str,
-    child: Option<Entity>,
+    child: Option<Element>,
     marker: SpacingMarker,
-) -> Entity {
-    let left = builder
-        .spawn((
-            TextBundle {
-                style: Style {
-                    margin: UiRect::right(Val::Px(SPACING_MARGIN)),
-                    ..default()
-                },
-                text: Text::from_section(
-                    "6".to_string(),
-                    TextStyle {
-                        font: theme.font.clone(),
-                        font_size: theme.input.size,
-                        color: Srgba::hex("F8F8FA").unwrap().into(),
-                    },
-                ),
-                ..Default::default()
-            },
-            marker.clone(),
-            SpacingMarkerPosition::Left,
-            Name::new("Left"),
-        ))
-        .id();
-    let right = builder
-        .spawn((
-            TextBundle {
-                style: Style {
-                    margin: UiRect::left(Val::Px(SPACING_MARGIN)),
-                    ..default()
-                },
-                text: Text::from_section(
-                    "7".to_string(),
-                    TextStyle {
-                        font: theme.font.clone(),
-                        font_size: theme.input.size,
-                        color: Srgba::hex("F8F8FA").unwrap().into(),
-                    },
-                ),
-                ..Default::default()
-            },
-            marker.clone(),
-            SpacingMarkerPosition::Right,
-            Name::new("Right"),
-        ))
-        .id();
-    builder
-        .spawn((
-            NodeBundle {
-                style: Style {
-                    padding: UiRect::new(
-                        Val::Px(SPACING_MARGIN),
-                        Val::Px(SPACING_MARGIN),
-                        Val::Px(0.0),
-                        Val::Px(0.0),
-                    ),
-                    flex_direction: FlexDirection::Column,
-                    ..default()
-                },
-                background_color: Srgba::hex(box_color).unwrap().into(),
-                ..default()
-            },
-            Name::new(type_of_spacing.to_string()),
-        ))
-        .with_children(|builder| {
-            builder
-                .spawn(NodeBundle {
-                    style: Style {
-                        position_type: PositionType::Relative,
-                        flex_direction: FlexDirection::Row,
-                        justify_content: JustifyContent::Center,
-                        ..default()
-                    },
-                    ..default()
-                })
-                .with_children(|builder| {
-                    builder.spawn(TextBundle {
-                        style: Style {
-                            position_type: PositionType::Absolute,
-                            left: Val::Px(0.0),
-                            ..default()
-                        },
-                        text: Text::from_section(
-                            type_of_spacing.to_string(),
-                            TextStyle {
-                                font: theme.font.clone(),
-                                font_size: theme.input.size,
-                                color: Srgba::hex("F8F8FA").unwrap().into(),
-                            },
-                        ),
-                        ..Default::default()
-                    });
-
-                    builder.spawn((
-                        TextBundle {
-                            style: Style {
-                                margin: UiRect::vertical(Val::Px(SPACING_MARGIN_Y)),
-                                ..default()
-                            },
-                            text: Text::from_section(
-                                "8".to_string(),
-                                TextStyle {
-                                    font: theme.font.clone(),
-                                    font_size: theme.input.size,
-                                    color: Srgba::hex("F8F8FA").unwrap().into(),
-                                },
-                            ),
-                            ..Default::default()
-                        },
-                        marker.clone(),
-                        SpacingMarkerPosition::Top,
-                        Name::new("Top"),
-                    ));
-                });
-            let mut wrapper = builder.spawn(NodeBundle {
-                style: Style {
-                    flex_direction: FlexDirection::Row,
-                    align_items: AlignItems::Center,
-                    ..default()
-                },
-                ..default()
-            });
-
-            if let Some(e) = child {
-                wrapper.push_children(&[left, e, right]);
-            }
-
-            builder.spawn((
-                TextBundle {
-                    style: Style {
-                        align_self: AlignSelf::Center,
-                        margin: UiRect::vertical(Val::Px(SPACING_MARGIN_Y)),
-                        ..default()
-                    },
-                    text: Text::from_section(
-                        "9".to_string(),
-                        TextStyle {
-                            font: theme.font.clone(),
-                            font_size: theme.input.size,
-                            color: Srgba::hex("F8F8FA").unwrap().into(),
-                        },
-                    ),
-                    ..Default::default()
-                },
-                marker.clone(),
-                SpacingMarkerPosition::Bottom,
-                Name::new("Bottom"),
-            ));
+) -> Element {
+    let left_el = Element::default()
+        .with_style(|style| {
+            style.margin = UiRect::right(SPACING_MARGIN.px());
+            style.align_items = AlignItems::Center;
         })
-        .id()
+        .with_text(
+            "6",
+            TextStyle {
+                font: theme.font.clone(),
+                font_size: theme.input.size,
+                color: Srgba::hex("F8F8FA").unwrap().into(),
+            },
+        )
+        .add_component(SpacingMarkerPosition::Left)
+        .add_component(marker.clone())
+        .add_component(Name::new("Left"));
+    let right_el = Element::default()
+        .with_style(|style| {
+            style.margin = UiRect::left(SPACING_MARGIN.px());
+            style.align_items = AlignItems::Center;
+        })
+        .with_text(
+            "7",
+            TextStyle {
+                font: theme.font.clone(),
+                font_size: theme.input.size,
+                color: Srgba::hex("F8F8FA").unwrap().into(),
+            },
+        )
+        .add_component(SpacingMarkerPosition::Right)
+        .add_component(marker.clone())
+        .add_component(Name::new("Right"));
+
+    let box_el = Element::default()
+        .with_style(|style| {
+            style.padding = UiRect::horizontal(SPACING_MARGIN.px());
+            style.flex_direction = FlexDirection::Column;
+        })
+        .background_color(Srgba::hex(box_color).unwrap())
+        .add_component(Name::new(type_of_spacing.to_string()));
+
+    let title = Element::default()
+        .with_style(|style| {
+            style.position_type = PositionType::Absolute;
+            style.left = 0.0.px();
+        })
+        .with_text(
+            type_of_spacing,
+            TextStyle {
+                font: theme.font.clone(),
+                font_size: theme.input.size,
+                color: Srgba::hex("F8F8FA").unwrap().into(),
+            },
+        );
+
+    let top_el = Element::default()
+        .with_style(|style| {
+            style.margin = UiRect::vertical(SPACING_MARGIN_Y.px());
+            style.justify_content = JustifyContent::Center;
+        })
+        .with_text(
+            "8",
+            TextStyle {
+                font: theme.font.clone(),
+                font_size: theme.input.size,
+                color: Srgba::hex("F8F8FA").unwrap().into(),
+            },
+        )
+        .add_component(SpacingMarkerPosition::Top)
+        .add_component(marker.clone())
+        .add_component(Name::new("Top"));
+    let bottom_el = Element::default()
+        .with_style(|style| {
+            style.margin = UiRect::vertical(SPACING_MARGIN_Y.px());
+            style.justify_content = JustifyContent::Center;
+        })
+        .with_text(
+            "9",
+            TextStyle {
+                font: theme.font.clone(),
+                font_size: theme.input.size,
+                color: Srgba::hex("F8F8FA").unwrap().into(),
+            },
+        )
+        .add_component(SpacingMarkerPosition::Bottom)
+        .add_component(marker.clone())
+        .add_component(Name::new("Bottom"));
+
+    let wrapper = Element::default().with_style(|style| {
+        style.flex_direction = FlexDirection::Row;
+        style.justify_content = JustifyContent::Center;
+    });
+    let wrapper = if let Some(el) = child {
+        wrapper.add_child_elements([left_el, el, right_el])
+    } else {
+        wrapper
+    };
+    let outer = Element::default().with_style(|style| {
+        style.position_type = PositionType::Relative;
+        style.flex_direction = FlexDirection::Row;
+        style.justify_content = JustifyContent::Center;
+    });
+    let box_el = box_el.add_child_elements([title, top_el, wrapper, bottom_el]);
+
+    outer.add_child_elements([box_el])
 }
-#[derive(Component, Clone)]
+
+#[derive(Component, Clone, Reflect)]
+#[reflect(Component)]
 enum SpacingMarker {
     Position,
     Margin,
     Border,
     Padding,
 }
-#[derive(Component)]
+#[derive(Component, Reflect)]
+#[reflect(Component)]
 enum SpacingMarkerPosition {
     Left,
     Right,
     Top,
     Bottom,
 }
-#[derive(Component)]
+#[derive(Component, Reflect)]
+#[reflect(Component)]
 struct SpacingDimensionsMarker;
-fn spacing(commands: &mut Commands, theme: &Theme) -> Entity {
-    let node_size = commands
-        .spawn((
-            NodeBundle {
-                style: Style {
-                    padding: UiRect::new(
-                        Val::Px(12.0),
-                        Val::Px(12.0),
-                        Val::Px(12.0),
-                        Val::Px(12.0),
-                    ),
-                    border: UiRect::all(Val::Px(1.0)),
-                    ..default()
-                },
-                border_color: BLACK.into(),
-                background_color: Srgba::hex("407AA4").unwrap().into(),
-                ..default()
-            },
-            Name::new("NodeSize"),
-        ))
-        .with_children(|builder| {
-            builder.spawn((
-                TextBundle {
-                    style: Style { ..default() },
-                    text: Text::from_section(
-                        "1000x370".to_string(),
-                        TextStyle {
-                            font: theme.font.clone(),
-                            font_size: theme.input.size,
-                            color: Srgba::hex("F8F8FA").unwrap().into(),
-                        },
-                    ),
-                    ..Default::default()
-                },
-                SpacingDimensionsMarker,
-            ));
+fn spacing(spawn_ui_e: &mut EventWriter<SpawnUiEvent>, theme: &Theme, parent: Option<Entity>) {
+    let node_size = Element::default()
+        .with_style(|style| {
+            style.padding = UiRect::all(12.0.px());
+            style.border = UiRect::all(1.0.px());
         })
-        .id();
+        .border_color(BLACK)
+        .background_color(Srgba::hex("407AA4").unwrap())
+        .add_component(Name::new("NodeSize"))
+        .with_text(
+            "1000x370",
+            TextStyle {
+                font: theme.font.clone(),
+                font_size: theme.input.size,
+                color: Srgba::hex("F8F8FA").unwrap().into(),
+            }, //todo SpacingDimensionsMarker
+        );
 
     let padding = created_nested_spacing_indicator(
         "padding",
-        commands,
         theme,
         "6657A6",
         node_size.into(),
@@ -1255,7 +1241,6 @@ fn spacing(commands: &mut Commands, theme: &Theme) -> Entity {
     );
     let border = created_nested_spacing_indicator(
         "border",
-        commands,
         theme,
         "38383D",
         padding.into(),
@@ -1263,7 +1248,6 @@ fn spacing(commands: &mut Commands, theme: &Theme) -> Entity {
     );
     let margin = created_nested_spacing_indicator(
         "margin",
-        commands,
         theme,
         "73764A",
         border.into(),
@@ -1271,33 +1255,31 @@ fn spacing(commands: &mut Commands, theme: &Theme) -> Entity {
     );
     let position = created_nested_spacing_indicator(
         "position",
-        commands,
         theme,
         "222222",
         margin.into(),
         SpacingMarker::Position,
     );
-
-    let mut container = commands.spawn((
-        NodeBundle {
-            style: Style {
-                width: Val::Percent(100.0),
-                justify_content: JustifyContent::Center,
-                ..default()
-            },
-            ..default()
-        },
-        Name::new("SpacingContainer"),
-    ));
-    container.push_children(&[position]);
-    container.id()
+    let container = Element::default()
+        .with_style(|style| {
+            style.width = 100.0.pct();
+            style.justify_content = JustifyContent::Center;
+        })
+        .add_component(Name::new("SpacingContainer"));
+    let container = container.add_child_elements([position]);
+    println!("send");
+    spawn_ui_e.send(SpawnUiEvent {
+        element: container,
+        parent,
+        index: 0.into(),
+    });
 }
 
 fn val_input_width_fixer(
     val_input_q: Query<(Entity, &ValInput)>,
     mut val_input_dropdown_q: Query<
-        (&Dropdown<ValTypes>, &mut Style, Entity),
-        (Changed<Dropdown<ValTypes>>, Without<TextInput>),
+        (&Dropdown, &mut Style, Entity),
+        (Changed<Dropdown>, Without<TextInput>),
     >,
     mut text_input_q: Query<(&TextInput, &mut Style), Without<ValInputDropdown>>,
     children_q: Query<&Children>,
@@ -1314,7 +1296,9 @@ fn val_input_width_fixer(
                 .iter_descendants(val_input_e)
                 .find_map(|child| {
                     if let Ok((text_input, mut text_input_s)) = text_input_q.get_mut(child) {
-                        if *dropdown.selected.value == ValTypes::Auto {
+                        let mut place_holder = ValTypes::default();
+                        place_holder.apply(&*dropdown.selected.value);
+                        if place_holder == ValTypes::Auto {
                             dropdown_s.width = Val::Px(55.0);
                             text_input_s.width = Val::Px(0.0);
                         } else {
@@ -1330,49 +1314,122 @@ fn val_input_width_fixer(
         });
 }
 
-#[derive(Component)]
+#[derive(Component, Reflect)]
+#[reflect(Component)]
 struct ValInput {}
 
-#[derive(Component)]
+#[derive(Component, Reflect)]
+#[reflect(Component)]
 struct ValInputDropdown {}
+pub fn dropdown_option(label: impl Into<String>, theme: &Theme) -> Element {
+    Element::default()
+        .with_style(|style| {
+            style.padding = UiRect::vertical(3.0.px());
+        })
+        .add_component(Name::new("Option"))
+        .add_component(Interaction::None)
+        // .add_component(DropdownItem)
+        .with_text(
+            label,
+            TextStyle {
+                font: theme.font.clone(),
+                font_size: theme.input.size,
+                color: theme.input.color,
+            },
+        )
+}
+pub fn dropdown(theme: &Theme, icons: &Icons, options: impl Into<Vec<String>>) -> Element {
+    let root_el = Element::default()
+        .with_style(|style| {
+            style.width = 30.0.px();
+            style.height = 22.0.px();
+            style.position_type = PositionType::Relative;
+            style.flex_direction = FlexDirection::Row;
+            style.align_items = AlignItems::Center;
+            style.justify_content = JustifyContent::SpaceBetween;
+            style.padding = UiRect::horizontal(6.0.px());
+            style.border = UiRect::new(0.0.px(), 1.0.px(), 1.0.px(), 1.0.px());
+            style.overflow = Overflow::clip_x();
+        })
+        .background_color(theme.input.background_color)
+        .border_color(BLACK)
+        .add_component(Interaction::None)
+        // .add_component(Dropdown)
+        .add_component(Name::new("dropdown"));
 
+    let selected_value = Element::default()
+        .with_text(
+            "default value",
+            TextStyle {
+                font: theme.font.clone(),
+                font_size: theme.input.size,
+                color: theme.input.color,
+                ..default()
+            },
+        )
+        .add_component(DropdownSelected {})
+        .add_component(Name::new("Selected"));
+    let chevron_icon = Element::default().add_component(UiImage::new(icons.chevron_down.clone()));
+    let dropdown_box = Element::default()
+        .with_style(|style| {
+            style.position_type = PositionType::Absolute;
+            style.top = 22.0.px();
+            style.flex_direction = FlexDirection::Column;
+            style.width = 140.0.px();
+            style.padding = UiRect::vertical(6.0.px());
+            style.display = Display::None;
+        })
+        .add_component(Name::new("Options"))
+        .add_component(DropdownBox {})
+        .add_component(ZIndex::Global(1000))
+        .background_color(theme.input.background_color);
+    let option_els: Vec<_> = options
+        .into()
+        .into_iter()
+        .map(|option| dropdown_option(option, theme))
+        .collect();
+
+    let dropdown_box = dropdown_box.add_child_elements(option_els);
+
+    root_el.add_child_elements([selected_value, chevron_icon, dropdown_box])
+}
 
 pub fn create_val_thing(
     commands: &mut Commands,
     icons: &Icons,
     theme: &Theme,
-    dropdown: Dropdown<ValTypes>,
+    dropdown: Dropdown,
     linked_to: ValTypeLink,
 ) -> Entity {
     let open = dropdown.open;
     let options = [
         DropdownItem {
             label: "auto".to_string(),
-            value: ValTypes::Auto.into(),
+            value: Box::new(ValTypes::Auto),
         },
         DropdownItem {
             label: "px".to_string(),
-            value: ValTypes::Px.into(),
+            value: Box::new(ValTypes::Px),
         },
         DropdownItem {
             label: "%".to_string(),
-            value: ValTypes::Percent.into(),
+            value: Box::new(ValTypes::Percent),
         },
         DropdownItem {
             label: "vw".to_string(),
-            value: ValTypes::Vw.into(),
+            value: Box::new(ValTypes::Vw),
         },
         DropdownItem {
             label: "vh".to_string(),
-            value: ValTypes::Vh.into(),
+            value: Box::new(ValTypes::Vh),
         },
         DropdownItem {
             label: "vmin".to_string(),
-            value: ValTypes::VMin.into(),
+            value: Box::new(ValTypes::VMin),
         },
         DropdownItem {
             label: "vmax".to_string(),
-            value: ValTypes::VMax.into(),
+            value: Box::new(ValTypes::VMax),
         },
     ];
     let number_input = create_input(commands, theme);
@@ -1503,6 +1560,38 @@ pub fn create_val_thing(
 
     val_input_e
 }
+
+fn input(args: impl Into<ComponentArgs>, theme: &Theme) -> Element {
+    let element = Element::default()
+        .with_style(|style| {
+            style.height = 22.0.px();
+            style.width = 120.0.px();
+            style.justify_content = JustifyContent::Center;
+            style.border = UiRect::new(1.0.px(), 0.0.px(), 1.0.px(), 1.0.px());
+            style.overflow = Overflow::clip_x();
+            style.align_items = AlignItems::Center;
+        })
+        .border_radius((4.0.px(), 0.0.px(), 0.0.px(), 4.0.px()))
+        .border_color(BLACK)
+        .background_color(theme.input.background_color)
+        .add_component(Name::new("Input"))
+        .add_component(TextInput {
+            value: String::new(),
+            cursor: 0,
+            focussed: false,
+        })
+        .add_component(Interaction::default())
+        .with_text(
+            "",
+            TextStyle {
+                font: theme.font.clone(),
+                font_size: theme.input.size,
+                color: theme.input.color,
+            },
+        );
+    element
+}
+
 fn create_input(commands: &mut Commands, theme: &Theme) -> Entity {
     commands
         .spawn((
@@ -1553,7 +1642,7 @@ fn create_input(commands: &mut Commands, theme: &Theme) -> Entity {
         .id()
 }
 
-#[derive(Component)]
+#[derive(Component, Reflect)]
 struct TextInput {
     value: String,
     cursor: usize,
