@@ -19,7 +19,7 @@ struct PickingUiNode {
     is_picking: bool,
 }
 
-#[derive(Default, PartialEq, Eq, Clone, Debug, Reflect)]
+#[derive(Default,Copy, PartialEq, Eq, Clone, Debug, Reflect)]
 pub enum ValTypes {
     #[default]
     Auto,

@@ -11,10 +11,10 @@ impl Plugin for DropdownPlugin {
         // register_dropdown_systems::<FlexDirection>(app);
         // register_dropdown_systems::<AlignItems>(app);
         // register_dropdown_systems::<ValTypes>(app);
-    app.add_systems(Update, manage_dropdown_state)
-        .add_systems(Update, background_click_system)
-        .add_systems(Update, interact_with_dropdown)
-        .add_systems(Update, click_dropdown_item);
+        app.add_systems(Update, manage_dropdown_state)
+            .add_systems(Update, background_click_system)
+            .add_systems(Update, interact_with_dropdown)
+            .add_systems(Update, click_dropdown_item);
     }
 }
 
@@ -25,15 +25,17 @@ impl Plugin for DropdownPlugin {
 //         .add_systems(Update, click_dropdown_item::<T>);
 // }
 
-#[derive(Component)]
+#[derive(Component, Reflect)]
+#[reflect(Component)]
 pub struct DropdownItem {
     pub label: String,
-    pub value: Box<dyn Reflect>,
+    pub value: usize,
 }
-#[derive(Component)]
+#[derive(Component, Reflect)]
+#[reflect(Component)]
 pub struct Dropdown {
     pub open: bool,
-    pub selected: DropdownItem,
+    pub selected: usize,
 }
 #[derive(Component, Reflect)]
 #[reflect(Component)]
@@ -102,8 +104,10 @@ fn click_dropdown_item(
         (Changed<Interaction>, With<Node>),
     >,
     parent_q: Query<&Parent>,
+    children_q: Query<&Children>,
     theme: Res<Theme>,
-    mut dropdown_q: Query<&mut Dropdown>,
+    mut dropdown_q: Query<(&mut Dropdown, Entity)>,
+    dropdown_item_q: Query<Entity, With<DropdownItem>>,
 ) {
     for (interaction, mut style, mut bg, mut dropdown_item, dropdown_item_e) in
         interaction_query.iter_mut()
@@ -112,14 +116,17 @@ fn click_dropdown_item(
             Interaction::Pressed => {
                 *bg = theme.input.hover_background_color.into();
                 for ancestor in parent_q.iter_ancestors(dropdown_item_e) {
-                    if let Ok(mut dropdown) = dropdown_q.get_mut(ancestor) {
-                        let mut clone_val = dropdown_item.value.clone_value();
-                        clone_val.apply(&*dropdown_item.value);
-                        dropdown.selected = DropdownItem {
-                            label: dropdown_item.label.clone(),
-                            value: clone_val,
-                        };
-                        println!("dropdown selected : {}", dropdown_item.label);
+                    if let Ok((mut dropdown, dropdown_e)) = dropdown_q.get_mut(ancestor) {
+                        let mut index = 0;
+                        for descendant in children_q.iter_descendants(dropdown_e) {
+                            if let Ok(dropdown_item_iter_e) = dropdown_item_q.get(descendant) {
+                                if dropdown_item_iter_e == dropdown_item_e {
+                                    dropdown.selected = index;
+                                }
+                                index += 1;
+                            }
+                        }
+
                         dropdown.open = false;
                     }
                 }
@@ -132,6 +139,7 @@ fn click_dropdown_item(
 
 fn manage_dropdown_state(
     changed_dropdown_q: Query<(Entity, &Dropdown), (Changed<Dropdown>)>,
+    dropdown_item_q: Query<(Entity, &DropdownItem)>,
     children_q: Query<&Children>,
     mut dropdown_box_q: Query<&mut Style, (With<DropdownBox>, Without<DropdownSelected>)>,
     mut dropdown_selected_q: Query<&mut Text, (With<DropdownSelected>, Without<DropdownBox>)>,
@@ -139,6 +147,16 @@ fn manage_dropdown_state(
     changed_dropdown_q
         .iter()
         .for_each(|(dropdown_e, dropdown)| {
+            let mut index = 0;
+            let mut val = None;
+            for descendant in children_q.iter_descendants(dropdown_e) {
+                if let Ok((_, dropdown_item)) = dropdown_item_q.get(descendant) {
+                    if dropdown.selected == index {
+                        val = Some(dropdown_item.label.clone());
+                    }
+                    index += 1;
+                }
+            }
             for descendant in children_q.iter_descendants(dropdown_e) {
                 if let Ok(mut dropdown_box_s) = dropdown_box_q.get_mut(descendant) {
                     dropdown_box_s.display = match dropdown.open {
@@ -146,7 +164,7 @@ fn manage_dropdown_state(
                         false => Display::None,
                     };
                 } else if let Ok(mut text) = dropdown_selected_q.get_mut(descendant) {
-                    text.sections[0].value = dropdown.selected.label.clone();
+                    text.sections[0].value = val.clone().unwrap();
                 }
             }
         });

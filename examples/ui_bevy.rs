@@ -129,10 +129,7 @@ fn spawn_layout(world: &mut World) {
             &theme,
             Dropdown {
                 open: false,
-                selected: DropdownItem {
-                    label: "px".to_string(),
-                    value: Box::new(ValTypes::Px),
-                },
+                selected: 0,
             },
             ValTypeLink::MarginLeft,
         );
@@ -142,10 +139,7 @@ fn spawn_layout(world: &mut World) {
             &theme,
             Dropdown {
                 open: false,
-                selected: DropdownItem {
-                    label: "px".to_string(),
-                    value: Box::new(ValTypes::Px),
-                },
+                selected: 0,
             },
             ValTypeLink::MarginRight,
         );
@@ -155,10 +149,7 @@ fn spawn_layout(world: &mut World) {
             &theme,
             Dropdown {
                 open: false,
-                selected: DropdownItem {
-                    label: "px".to_string(),
-                    value: Box::new(ValTypes::Px),
-                },
+                selected: 0,
             },
             ValTypeLink::MarginTop,
         );
@@ -168,10 +159,7 @@ fn spawn_layout(world: &mut World) {
             &theme,
             Dropdown {
                 open: false,
-                selected: DropdownItem {
-                    label: "px".to_string(),
-                    value: Box::new(ValTypes::Px),
-                },
+                selected: 0,
             },
             ValTypeLink::MarginBottom,
         );
@@ -181,10 +169,7 @@ fn spawn_layout(world: &mut World) {
             &theme,
             Dropdown {
                 open: false,
-                selected: DropdownItem {
-                    label: "px".to_string(),
-                    value: Box::new(ValTypes::Px),
-                },
+                selected: 0,
             },
             ValTypeLink::PaddingLeft,
         );
@@ -194,10 +179,7 @@ fn spawn_layout(world: &mut World) {
             &theme,
             Dropdown {
                 open: false,
-                selected: DropdownItem {
-                    label: "px".to_string(),
-                    value: Box::new(ValTypes::Px),
-                },
+                selected: 0,
             },
             ValTypeLink::PaddingRight,
         );
@@ -207,10 +189,7 @@ fn spawn_layout(world: &mut World) {
             &theme,
             Dropdown {
                 open: false,
-                selected: DropdownItem {
-                    label: "px".to_string(),
-                    value: Box::new(ValTypes::Px),
-                },
+                selected: 0,
             },
             ValTypeLink::PaddingTop,
         );
@@ -220,10 +199,7 @@ fn spawn_layout(world: &mut World) {
             &theme,
             Dropdown {
                 open: false,
-                selected: DropdownItem {
-                    label: "px".to_string(),
-                    value: Box::new(ValTypes::Px),
-                },
+                selected: 0,
             },
             ValTypeLink::PaddingBottom,
         );
@@ -233,10 +209,7 @@ fn spawn_layout(world: &mut World) {
             &theme,
             Dropdown {
                 open: false,
-                selected: DropdownItem {
-                    label: "px".to_string(),
-                    value: Box::new(ValTypes::Px),
-                },
+                selected: 0,
             },
             ValTypeLink::BorderLeft,
         );
@@ -246,10 +219,7 @@ fn spawn_layout(world: &mut World) {
             &theme,
             Dropdown {
                 open: false,
-                selected: DropdownItem {
-                    label: "px".to_string(),
-                    value: Box::new(ValTypes::Px),
-                },
+                selected: 0,
             },
             ValTypeLink::BorderRight,
         );
@@ -259,10 +229,7 @@ fn spawn_layout(world: &mut World) {
             &theme,
             Dropdown {
                 open: false,
-                selected: DropdownItem {
-                    label: "px".to_string(),
-                    value: Box::new(ValTypes::Px),
-                },
+                selected: 0,
             },
             ValTypeLink::BorderTop,
         );
@@ -272,10 +239,7 @@ fn spawn_layout(world: &mut World) {
             &theme,
             Dropdown {
                 open: false,
-                selected: DropdownItem {
-                    label: "px".to_string(),
-                    value: Box::new(ValTypes::Px),
-                },
+                selected: 0,
             },
             ValTypeLink::BorderBottom,
         );
@@ -285,10 +249,7 @@ fn spawn_layout(world: &mut World) {
             &theme,
             Dropdown {
                 open: false,
-                selected: DropdownItem {
-                    label: "px".to_string(),
-                    value: Box::new(ValTypes::Px),
-                },
+                selected: 0,
             },
             ValTypeLink::PositionLeft,
         );
@@ -298,10 +259,7 @@ fn spawn_layout(world: &mut World) {
             &theme,
             Dropdown {
                 open: false,
-                selected: DropdownItem {
-                    label: "px".to_string(),
-                    value: Box::new(ValTypes::Px),
-                },
+                selected: 0,
             },
             ValTypeLink::PositionRight,
         );
@@ -311,10 +269,7 @@ fn spawn_layout(world: &mut World) {
             &theme,
             Dropdown {
                 open: false,
-                selected: DropdownItem {
-                    label: "px".to_string(),
-                    value: Box::new(ValTypes::Px),
-                },
+                selected: 0,
             },
             ValTypeLink::PositionTop,
         );
@@ -324,10 +279,7 @@ fn spawn_layout(world: &mut World) {
             &theme,
             Dropdown {
                 open: false,
-                selected: DropdownItem {
-                    label: "px".to_string(),
-                    value: Box::new(ValTypes::Px),
-                },
+                selected: 0,
             },
             ValTypeLink::PositionBottom,
         );
@@ -337,10 +289,7 @@ fn spawn_layout(world: &mut World) {
             &theme,
             Dropdown {
                 open: false,
-                selected: DropdownItem {
-                    label: "px".to_string(),
-                    value: Box::new(ValTypes::Px),
-                },
+                selected: 0,
             },
             ValTypeLink::Width,
         );
@@ -350,10 +299,7 @@ fn spawn_layout(world: &mut World) {
             &theme,
             Dropdown {
                 open: false,
-                selected: DropdownItem {
-                    label: "px".to_string(),
-                    value: Box::new(ValTypes::Px),
-                },
+                selected: 0,
             },
             ValTypeLink::MinWidth,
         );
@@ -363,10 +309,7 @@ fn spawn_layout(world: &mut World) {
             &theme,
             Dropdown {
                 open: false,
-                selected: DropdownItem {
-                    label: "px".to_string(),
-                    value: Box::new(ValTypes::Px),
-                },
+                selected: 0,
             },
             ValTypeLink::MaxWidth,
         );
@@ -376,10 +319,7 @@ fn spawn_layout(world: &mut World) {
             &theme,
             Dropdown {
                 open: false,
-                selected: DropdownItem {
-                    label: "px".to_string(),
-                    value: Box::new(ValTypes::Px),
-                },
+                selected: 0,
             },
             ValTypeLink::Height,
         );
@@ -389,10 +329,7 @@ fn spawn_layout(world: &mut World) {
             &theme,
             Dropdown {
                 open: false,
-                selected: DropdownItem {
-                    label: "px".to_string(),
-                    value: Box::new(ValTypes::Px),
-                },
+                selected: 0,
             },
             ValTypeLink::MinHeight,
         );
@@ -402,10 +339,7 @@ fn spawn_layout(world: &mut World) {
             &theme,
             Dropdown {
                 open: false,
-                selected: DropdownItem {
-                    label: "px".to_string(),
-                    value: Box::new(ValTypes::Px),
-                },
+                selected: 0,
             },
             ValTypeLink::MaxHeight,
         );
@@ -719,6 +653,28 @@ fn get_calculated_pixel_val(
     }
 }
 
+fn get_val_type_for_dropdown_value(i: usize) -> ValTypes {
+    match i {
+        1 => ValTypes::Px,
+        2 => ValTypes::Percent,
+        3 => ValTypes::Vw,
+        4 => ValTypes::Vh,
+        5 => ValTypes::VMin,
+        6 => ValTypes::VMax,
+        _ => ValTypes::Auto,
+    }
+}
+fn get_dropdown_value_for_val_type(val: ValTypes) -> usize {
+    match val {
+        ValTypes::Auto => 0,
+        ValTypes::Px => 1,
+        ValTypes::Percent => 2,
+        ValTypes::Vw => 3,
+        ValTypes::Vh => 4,
+        ValTypes::VMin => 5,
+        ValTypes::VMax => 6,
+    }
+}
 fn update_style_panel(
     style_inputs_q: Query<(&ValTypeLink, Entity)>,
     active_style_inspection: Res<ActiveStyleInspection>,
@@ -762,22 +718,7 @@ fn update_style_panel(
                 };
                 children_q.iter_descendants(val_input_e).for_each(|child| {
                     if let Ok((mut dropdown, dropdown_e)) = val_input_dropdown_q.get_mut(child) {
-                        let selected = children_q.iter_descendants(dropdown_e).find_map(|child| {
-                            if let Ok(dropdown_item) = dropdown_items_q.get(child) {
-                                if let Some(dropdown_val_type) =
-                                    dropdown_item.value.downcast_ref::<ValTypes>()
-                                {
-                                    if val_type == *dropdown_val_type {
-                                        return Some(DropdownItem {
-                                            label: dropdown_item.label.clone(),
-                                            value: Box::new(dropdown_val_type.clone()),
-                                        });
-                                    }
-                                }
-                            }
-                            None
-                        });
-                        dropdown.selected = selected.unwrap();
+                        dropdown.selected = get_dropdown_value_for_val_type(val_type);
                     }
                     if let Ok(mut text_input) = text_input_q.get_mut(child) {
                         let number_val = match val_type_link {
@@ -871,8 +812,7 @@ fn update_style_property(
                                 .and_then(|e| style_q.get_mut(e).ok())
                             {
                                 let input_val = text_input.value.parse::<f32>().unwrap_or_default();
-                                let mut val_type = ValTypes::default();
-                                val_type.apply(&*dropdown.selected.value);
+                                let val_type = get_val_type_for_dropdown_value(dropdown.selected);
                                 let val = match val_type {
                                     ValTypes::Px => Val::Px(input_val),
                                     ValTypes::Percent => Val::Percent(input_val),
@@ -1296,8 +1236,7 @@ fn val_input_width_fixer(
                 .iter_descendants(val_input_e)
                 .find_map(|child| {
                     if let Ok((text_input, mut text_input_s)) = text_input_q.get_mut(child) {
-                        let mut place_holder = ValTypes::default();
-                        place_holder.apply(&*dropdown.selected.value);
+                        let place_holder = get_val_type_for_dropdown_value(dropdown.selected);
                         if place_holder == ValTypes::Auto {
                             dropdown_s.width = Val::Px(55.0);
                             text_input_s.width = Val::Px(0.0);
@@ -1321,24 +1260,30 @@ struct ValInput {}
 #[derive(Component, Reflect)]
 #[reflect(Component)]
 struct ValInputDropdown {}
-pub fn dropdown_option(label: impl Into<String>, theme: &Theme) -> Element {
+pub fn dropdown_option(option: DropdownItem, theme: &Theme) -> Element {
     Element::default()
         .with_style(|style| {
             style.padding = UiRect::vertical(3.0.px());
         })
-        .add_component(Name::new("Option"))
+        .add_component(Name::new(format!("Option -> {}", option.label)))
         .add_component(Interaction::None)
-        // .add_component(DropdownItem)
         .with_text(
-            label,
+            &option.label,
             TextStyle {
                 font: theme.font.clone(),
                 font_size: theme.input.size,
                 color: theme.input.color,
             },
         )
+        .add_component(option)
 }
-pub fn dropdown(theme: &Theme, icons: &Icons, options: impl Into<Vec<String>>) -> Element {
+
+pub fn dropdown(
+    theme: &Theme,
+    icons: &Icons,
+    options: impl Into<Vec<DropdownItem>>,
+    selected: usize,
+) -> Element {
     let root_el = Element::default()
         .with_style(|style| {
             style.width = 30.0.px();
@@ -1354,7 +1299,10 @@ pub fn dropdown(theme: &Theme, icons: &Icons, options: impl Into<Vec<String>>) -
         .background_color(theme.input.background_color)
         .border_color(BLACK)
         .add_component(Interaction::None)
-        // .add_component(Dropdown)
+        .add_component(Dropdown {
+            open: false,
+            selected,
+        })
         .add_component(Name::new("dropdown"));
 
     let selected_value = Element::default()
@@ -1369,6 +1317,7 @@ pub fn dropdown(theme: &Theme, icons: &Icons, options: impl Into<Vec<String>>) -
         )
         .add_component(DropdownSelected {})
         .add_component(Name::new("Selected"));
+
     let chevron_icon = Element::default().add_component(UiImage::new(icons.chevron_down.clone()));
     let dropdown_box = Element::default()
         .with_style(|style| {
@@ -1405,31 +1354,31 @@ pub fn create_val_thing(
     let options = [
         DropdownItem {
             label: "auto".to_string(),
-            value: Box::new(ValTypes::Auto),
+            value: 0, //Box::new(ValTypes::Auto),
         },
         DropdownItem {
             label: "px".to_string(),
-            value: Box::new(ValTypes::Px),
+            value: 1, //Box::new(ValTypes::Px),
         },
         DropdownItem {
             label: "%".to_string(),
-            value: Box::new(ValTypes::Percent),
+            value: 2, //Box::new(ValTypes::Percent),
         },
         DropdownItem {
             label: "vw".to_string(),
-            value: Box::new(ValTypes::Vw),
+            value: 3, //Box::new(ValTypes::Vw),
         },
         DropdownItem {
             label: "vh".to_string(),
-            value: Box::new(ValTypes::Vh),
+            value: 4, //Box::new(ValTypes::Vh),
         },
         DropdownItem {
             label: "vmin".to_string(),
-            value: Box::new(ValTypes::VMin),
+            value: 5, //Box::new(ValTypes::VMin),
         },
         DropdownItem {
             label: "vmax".to_string(),
-            value: Box::new(ValTypes::VMax),
+            value: 6, //Box::new(ValTypes::VMax),
         },
     ];
     let number_input = create_input(commands, theme);
