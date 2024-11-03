@@ -21,7 +21,7 @@ use bevy::{
     window::WindowResolution,
 };
 use bevy_ui_inspector::{
-    element::{spawn_element_hierarchy, ComponentArgs, Element, ElementChildren},
+    element::{spawn_element_hierarchy, ComponentArgs, Components, Element, ElementChildren},
     val::ValExt,
     UiInspectorPlugin,
 };
@@ -89,7 +89,7 @@ fn box_component(args: impl Into<ComponentArgs>) -> Element {
             background_color: BLUE.into(),
             ..default()
         },
-        components: HashMap::new(),
+        components: Components::new(),
         children: args.into().children,
     }
 }
@@ -104,7 +104,7 @@ fn row_component() -> Element {
             background_color: RED.into(),
             ..default()
         },
-        components: HashMap::new(),
+        components: Components::new(),
         children: vec![ElementChildren::None],
     }
 }
@@ -122,7 +122,7 @@ fn setup(world: &mut World) {
     .add_child_elements([row_component().with_style(|style| {
         style.margin = UiRect::left(10.0.px());
     })]);
-    spawn_element_hierarchy(my_struct, world, None);
+    spawn_element_hierarchy(my_struct, world, None, None);
 
     //     let window = windows.get_single().unwrap();
     //     let aspect_ratio = window.width() / window.height();

@@ -1,29 +1,30 @@
-use crate::{icons::Icons, theme::Theme, ValTypes};
+use crate::{
+    element::{Components, Element},
+    icons::Icons,
+    input_helpers::{stabilize_inputs, Initializing},
+    theme::Theme,
+    val::ValExt,
+    ValTypes,
+};
 use ::bevy::prelude::*;
+use bevy::{
+    color::palettes::css::BLACK,
+    ui::{widget::UiImageSize, ContentSize},
+};
 pub struct DropdownPlugin;
 impl Plugin for DropdownPlugin {
     fn build(&self, app: &mut App) {
-        // register_dropdown_systems::<usize>(app);
-        // register_dropdown_systems::<Display>(app);
-        // register_dropdown_systems::<PositionType>(app);
-        // register_dropdown_systems::<FlexWrap>(app);
-        // register_dropdown_systems::<JustifyContent>(app);
-        // register_dropdown_systems::<FlexDirection>(app);
-        // register_dropdown_systems::<AlignItems>(app);
-        // register_dropdown_systems::<ValTypes>(app);
         app.add_systems(Update, manage_dropdown_state)
             .add_systems(Update, background_click_system)
             .add_systems(Update, interact_with_dropdown)
+            .add_systems(PostUpdate, stabilize_inputs)
+            .register_type::<Dropdown>()
+            .register_type::<DropdownItem>()
+            .register_type::<DropdownBox>()
+            .register_type::<DropdownSelected>()
             .add_systems(Update, click_dropdown_item);
     }
 }
-
-// fn register_dropdown_systems<T: 'static + PartialEq + Clone + Send + Sync>(app: &mut App) {
-//     app.add_systems(Update, manage_dropdown_state::<T>)
-//         .add_systems(Update, background_click_system::<T>)
-//         .add_systems(Update, interact_with_dropdown::<T>)
-//         .add_systems(Update, click_dropdown_item::<T>);
-// }
 
 #[derive(Component, Reflect)]
 #[reflect(Component)]
@@ -50,6 +51,98 @@ pub struct DropdownSelected {}
 pub struct DropdownBackground {
     pub dropdown_e: Entity,
 }
+
+pub fn dropdown_option(option: DropdownItem, theme: &Theme) -> Element {
+    Element::default()
+        .with_style(|style| {
+            style.padding = UiRect::vertical(3.0.px());
+        })
+        .add_component(Name::new(format!("Option -> {}", option.label)))
+        .add_component(Interaction::None)
+        .with_text(
+            &option.label,
+            TextStyle {
+                font: theme.font.clone(),
+                font_size: theme.input.size,
+                color: theme.input.color,
+            },
+        )
+        .add_component(option)
+}
+
+pub fn dropdown(
+    theme: &Theme,
+    icons: &Icons,
+    options: impl Into<Vec<DropdownItem>>,
+    selected: usize,
+) -> Element {
+    let root_el = Element::default()
+        .with_style(|style| {
+            style.width = 60.0.px();
+            style.height = 22.0.px();
+            style.position_type = PositionType::Relative;
+            style.flex_direction = FlexDirection::Row;
+            style.align_items = AlignItems::Center;
+            style.justify_content = JustifyContent::SpaceBetween;
+            style.padding = UiRect::horizontal(6.0.px());
+            style.border = UiRect::new(0.0.px(), 1.0.px(), 1.0.px(), 1.0.px());
+            style.overflow = Overflow::clip_x();
+        })
+        .background_color(theme.input.background_color)
+        .border_color(BLACK)
+        .add_component(Interaction::None)
+        .add_component(Initializing)
+        .add_component(Dropdown {
+            open: false,
+            selected,
+        })
+        .add_component(Name::new("dropdown"));
+
+    let selected_value = Element::default()
+        .with_text_and_components(
+            "default value",
+            TextStyle {
+                font: theme.font.clone(),
+                font_size: theme.input.size,
+                color: theme.input.color,
+                ..default()
+            },
+            Components::new().add(DropdownSelected {}),
+        )
+        .add_component(Name::new("Selected"));
+
+    let chevron_icon = Element::default()
+        .with_style(|style| {
+            style.width = 10.0.px();
+        })
+        .add_component(UiImage::new(icons.chevron_down.clone()))
+        .add_component(UiImageSize::default())
+        .add_component(ContentSize::default());
+
+    let dropdown_box = Element::default()
+        .with_style(|style| {
+            style.position_type = PositionType::Absolute;
+            style.top = 22.0.px();
+            style.flex_direction = FlexDirection::Column;
+            style.width = 140.0.px();
+            style.padding = UiRect::vertical(6.0.px());
+            style.display = Display::None;
+        })
+        .add_component(Name::new("Options"))
+        .add_component(DropdownBox {})
+        .add_component(ZIndex::Global(1000))
+        .background_color(theme.input.background_color);
+    let option_els: Vec<_> = options
+        .into()
+        .into_iter()
+        .map(|option| dropdown_option(option, theme))
+        .collect();
+
+    let dropdown_box = dropdown_box.add_child_elements(option_els);
+
+    root_el.add_child_elements([selected_value, chevron_icon, dropdown_box])
+}
+
 fn interact_with_dropdown(
     mut interaction_query: Query<
         (
@@ -183,110 +276,4 @@ fn background_click_system(
             commands.entity(entity).despawn_recursive();
         }
     }
-}
-
-pub fn create_dropdown(
-    commands: &mut Commands,
-    icons: &Icons,
-    theme: &Theme,
-    options: Vec<DropdownItem>,
-    dropdown: Dropdown,
-) -> Entity {
-    let open = dropdown.open;
-    let dropdown_e = commands
-        .spawn((
-            NodeBundle {
-                style: Style {
-                    width: Val::Px(120.),
-                    height: Val::Px(22.),
-                    position_type: PositionType::Relative,
-                    flex_direction: FlexDirection::Row,
-                    align_items: AlignItems::Center,
-                    justify_content: JustifyContent::SpaceBetween,
-                    padding: UiRect::horizontal(Val::Px(6.0)),
-                    ..Default::default()
-                },
-                background_color: BackgroundColor(theme.input.background_color),
-                ..Default::default()
-            },
-            Interaction::None,
-            Name::new("Dropdown"),
-            dropdown,
-        ))
-        .with_children(|builder| {
-            builder.spawn((
-                TextBundle::from_section(
-                    "default value",
-                    TextStyle {
-                        font: theme.font.clone(),
-                        font_size: theme.input.size,
-                        color: theme.input.color,
-                        ..default()
-                    },
-                ),
-                DropdownSelected {},
-                Name::new("Selected"),
-            ));
-            builder.spawn(ImageBundle {
-                style: Style {
-                    width: Val::Px(16.0),
-                    height: Val::Px(16.0),
-                    ..default()
-                },
-                image: UiImage::new(icons.chevron_down.clone()),
-                ..default()
-            });
-            builder
-                .spawn((
-                    DropdownBox {},
-                    NodeBundle {
-                        style: Style {
-                            position_type: PositionType::Absolute,
-                            top: Val::Px(22.0),
-                            flex_direction: FlexDirection::Column,
-                            width: Val::Px(140.0),
-                            padding: UiRect::vertical(Val::Px(6.0)),
-                            display: match open {
-                                true => Display::Flex,
-                                false => Display::None,
-                            },
-                            ..default()
-                        },
-                        background_color: theme.input.background_color.into(),
-                        ..default()
-                    },
-                    Name::new("Options"),
-                ))
-                .with_children(|builder| {
-                    for dropdown_item in options {
-                        let label = dropdown_item.label.clone();
-                        builder
-                            .spawn((
-                                NodeBundle {
-                                    style: Style {
-                                        padding: UiRect::vertical(Val::Px(3.0)),
-                                        ..default()
-                                    },
-                                    ..default()
-                                },
-                                Name::new("Option"),
-                                Interaction::None,
-                                dropdown_item,
-                            ))
-                            .with_children(|builder| {
-                                builder.spawn((TextBundle::from_section(
-                                    label,
-                                    TextStyle {
-                                        font: theme.font.clone(),
-                                        font_size: theme.input.size,
-                                        color: theme.input.color,
-                                    },
-                                ),));
-                            });
-                    }
-                });
-        })
-        .id();
-
-    dropdown_e
 }

@@ -4,7 +4,7 @@ use bevy::{prelude::*, utils::HashMap};
 #[derive(Debug)]
 pub enum ElementChildren {
     Element(Element),
-    Text(String, TextStyle),
+    Text(String, TextStyle, Option<Components>),
     None,
 }
 impl Default for ElementChildren {
@@ -12,13 +12,33 @@ impl Default for ElementChildren {
         Self::None
     }
 }
+#[derive(Default, Debug)]
+pub struct Components {
+    map: HashMap<TypeId, Box<dyn Reflect>>,
+}
+impl Components {
+    pub fn new() -> Self {
+        Self::default()
+    }
+    pub fn add<T: Component + Reflect>(mut self, thing: T) -> Self {
+        let component_data: Box<dyn Reflect> = Box::new(thing);
+        let type_id = TypeId::of::<T>();
+
+        self.map.insert(type_id, component_data);
+        self
+    }
+}
 #[derive(Default)]
 pub struct Element {
     pub node: NodeBundle,
-    pub components: HashMap<TypeId, Box<dyn Reflect>>,
+    pub components: Components,
     pub children: Vec<ElementChildren>,
 }
-
+#[derive(Default)]
+pub struct TextElement {
+    pub text: TextBundle,
+    components: Components,
+}
 
 impl std::fmt::Debug for Element {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -27,7 +47,7 @@ impl std::fmt::Debug for Element {
                 ElementChildren::Element(element) => {
                     f.write_str(&format!("Element:\n{:?}", element));
                 }
-                ElementChildren::Text(text, _) => {
+                ElementChildren::Text(text, _, _) => {
                     f.write_str(&format!("text: {:?}", text));
                 }
                 ElementChildren::None => {
@@ -63,11 +83,17 @@ impl From<MyUiRect> for UiRect {
 }
 
 impl Element {
+    pub fn text(text: impl Into<String>) -> Self {
+        Self::default().with_text(text, TextStyle::default())
+    }
+    pub fn empty() -> Self {
+        Self::default()
+    }
+    pub fn text_with_style(text: impl Into<String>, style: TextStyle) -> Self {
+        Self::default().with_text(text, style)
+    }
     pub fn add_component<T: Component + Reflect>(mut self, thing: T) -> Self {
-        let component_data: Box<dyn Reflect> = Box::new(thing);
-        let type_id = TypeId::of::<T>();
-
-        self.components.insert(type_id, component_data);
+        self.components = self.components.add(thing);
         self
     }
 
@@ -77,7 +103,16 @@ impl Element {
         self
     }
     pub fn with_text(mut self, text: impl Into<String>, style: TextStyle) -> Self {
-        self.children = vec![ElementChildren::Text(text.into(), style)];
+        self.children = vec![ElementChildren::Text(text.into(), style, None)];
+        self
+    }
+    pub fn with_text_and_components(
+        mut self,
+        text: impl Into<String>,
+        style: TextStyle,
+        components: Components,
+    ) -> Self {
+        self.children = vec![ElementChildren::Text(text.into(), style, components.into())];
         self
     }
 
@@ -122,15 +157,17 @@ pub fn insert_component_to_element(
             reflect_component.insert(&mut world.entity_mut(entity), &*component_data, &registry);
         } else {
             println!(
-                "TypeId {:?} does not correspond to a ReflectComponent",
-                type_id
+                "Type '{:?}' does not correspond to a ReflectComponent",
+            component_data.reflect_type_path()
             );
         }
     } else {
-        println!("TypeId {:?} not found in TypeRegistry", type_id);
+        println!(
+            "Type (TypeId: {:?}) not found in TypeRegistry",
+            component_data.reflect_type_path()
+        );
     }
 }
-
 pub fn spawn_element_hierarchy(
     my_struct: Element,
     world: &mut World,
@@ -146,7 +183,7 @@ pub fn spawn_element_hierarchy(
             parent_e.push_children(&[node_id]);
         }
     }
-    for (type_id, data) in my_struct.components.into_iter() {
+    for (type_id, data) in my_struct.components.map.into_iter() {
         insert_component_to_element(node_id, data, type_id, world);
     }
     for child in my_struct.children.into_iter() {
@@ -155,13 +192,18 @@ pub fn spawn_element_hierarchy(
                 spawn_element_hierarchy(element, world, node_id.into(), None);
             }
 
-            ElementChildren::Text(text, style) => {
+            ElementChildren::Text(text, style, components_o) => {
                 let text_bundle = TextBundle {
                     text: Text::from_section(text, style),
                     ..Default::default()
                 };
 
                 let id = world.spawn(text_bundle).id();
+                if let Some(components) = components_o {
+                    for (type_id, data) in components.map.into_iter() {
+                        insert_component_to_element(id, data, type_id, world);
+                    }
+                }
                 let mut parent_e = world.entity_mut(node_id);
                 parent_e.push_children(&[id]);
             }

@@ -3,46 +3,30 @@ use bevy_egui::{
     egui::{self, Ui},
     EguiContexts, EguiPlugin,
 };
+use val_input::ValTypes;
 pub mod dropdown;
+pub mod element;
 pub mod icons;
 pub mod theme;
-pub mod element;
 pub mod val;
+pub mod val_input;
+pub mod number_input;
+pub mod input_helpers;
 
 #[derive(Resource, Default)]
-struct RestorePreviousResource {
-    selected: Option<Entity>,
+pub struct RestorePreviousResource {
+    pub selected: Option<Entity>,
     hovered: Option<Entity>,
+}
+#[derive(Resource, Default)]
+pub struct ActiveStyleInspection {
+    pub entity: Option<Entity>,
 }
 #[derive(Resource, Default)]
 struct PickingUiNode {
     is_picking: bool,
 }
 
-#[derive(Default,Copy, PartialEq, Eq, Clone, Debug, Reflect)]
-pub enum ValTypes {
-    #[default]
-    Auto,
-    Px,
-    Percent,
-    Vw,
-    Vh,
-    VMin,
-    VMax,
-}
-impl std::fmt::Display for ValTypes {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            ValTypes::Auto => f.write_str("a"),
-            ValTypes::Px => f.write_str("px"),
-            ValTypes::Percent => f.write_str("%"),
-            ValTypes::Vw => f.write_str("vw"),
-            ValTypes::Vh => f.write_str("vh"),
-            ValTypes::VMin => f.write_str("vmin"),
-            ValTypes::VMax => f.write_str("vmax"),
-        }
-    }
-}
 
 fn val_dropdown(ui: &mut Ui, val: &mut ValTypes, id: &str) -> bool {
     let mut has_changed = false;
@@ -113,6 +97,7 @@ fn ui_node_hit_test_system(
     node_query: Query<(Entity, &GlobalTransform, &Node), Without<HoverUiElementMarker>>,
     node_q: Query<(&Node, &GlobalTransform)>,
     mut previous_resource: ResMut<RestorePreviousResource>,
+    mut style_under_inspection: ResMut<ActiveStyleInspection>,
     hovered_ui_q: Query<Entity, With<HoverUiElementMarker>>,
     mut picking_ui_node: ResMut<PickingUiNode>,
     mut gizmos: Gizmos,
@@ -144,6 +129,7 @@ fn ui_node_hit_test_system(
             nodes_under_cursor.first().map(|(top_entity, _)| {
                 if mouse_button_input.just_pressed(MouseButton::Left) {
                     previous_resource.selected = Some(*top_entity);
+                    style_under_inspection.entity = Some(*top_entity);
                     previous_resource.hovered = None;
                 }
                 *top_entity
@@ -173,6 +159,7 @@ fn create_ui(
     ui_q: Query<(Entity, &Node, Option<&Children>, Option<&Name>)>,
     mut style_q: Query<(&mut Style, &mut BorderColor, &mut BackgroundColor)>,
     mut previous_resource: ResMut<RestorePreviousResource>,
+    mut style_under_inspection: ResMut<ActiveStyleInspection>,
     mut selected_node: Local<Option<Entity>>,
     mut collapse_all: Local<Option<bool>>,
     mut picking_ui_node: ResMut<PickingUiNode>,
@@ -227,6 +214,7 @@ fn create_ui(
                                 let button = ui.button("Select");
                                 if button.clicked() {
                                     previous_resource.selected = Some(root_e);
+                                    style_under_inspection.entity = Some(root_e);
                                 }
 
                                 let something_within_root_hoverd = render_nested_elements(
@@ -234,6 +222,7 @@ fn create_ui(
                                     &ui_q,
                                     children.into(),
                                     &mut previous_resource,
+                                    &mut style_under_inspection,
                                     &parents_of_selected,
                                     &open_on_change,
                                     &collapse_all,
@@ -397,6 +386,7 @@ fn render_nested_elements(
     ui_q: &Query<(Entity, &Node, Option<&Children>, Option<&Name>)>,
     children: Option<&Children>,
     previous_resource: &mut ResMut<RestorePreviousResource>,
+    style_under_inspection: &mut ResMut<ActiveStyleInspection>,
     parents_of_selected: &Vec<Entity>,
     open_on_change: &Option<Entity>,
     collapse_all: &Option<bool>,
@@ -429,6 +419,7 @@ fn render_nested_elements(
                         let button = ui.button("Select");
                         if button.clicked() {
                             previous_resource.selected = Some(*child);
+                            style_under_inspection.entity = Some(*child);
                         }
 
                         let something_already_hovered = render_nested_elements(
@@ -436,6 +427,7 @@ fn render_nested_elements(
                             ui_q,
                             children,
                             previous_resource,
+                            style_under_inspection,
                             parents_of_selected,
                             open_on_change,
                             collapse_all,
@@ -526,6 +518,7 @@ impl Plugin for UiInspectorPlugin {
             },
         );
         app.insert_resource(RestorePreviousResource::default());
+        app.insert_resource(ActiveStyleInspection::default());
         app.insert_resource(PickingUiNode::default());
         app.add_systems(Update, (create_ui, ui_node_hit_test_system));
         app.add_systems(Startup, (setup));
