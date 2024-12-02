@@ -1,10 +1,16 @@
 use std::any::TypeId;
 
-use bevy::{prelude::*, utils::HashMap};
+use bevy::{ecs::world::Command, prelude::*, utils::HashMap};
+#[derive(Event)]
+pub struct SpawnUiEvent {
+    pub element: Element,
+    pub parent: Option<Entity>,
+    pub index: Option<usize>,
+}
 #[derive(Debug)]
 pub enum ElementChildren {
     Element(Element),
-    Text(String, TextStyle, Option<Components>),
+    Text(String, (TextFont, TextColor), Option<Components>),
     None,
 }
 impl Default for ElementChildren {
@@ -36,7 +42,7 @@ pub struct Element {
 }
 #[derive(Default)]
 pub struct TextElement {
-    pub text: TextBundle,
+    pub text: (TextFont, TextColor),
     components: Components,
 }
 
@@ -82,14 +88,26 @@ impl From<MyUiRect> for UiRect {
     }
 }
 
+pub struct SpawnElement {
+    pub element: Element,
+    pub parent: Option<Entity>,
+    pub index: Option<usize>,
+}
+
+impl Command for SpawnElement {
+    fn apply(self, world: &mut World) {
+        spawn_element_hierarchy(self.element, world, self.parent, self.index);
+    }
+}
+
 impl Element {
     pub fn text(text: impl Into<String>) -> Self {
-        Self::default().with_text(text, TextStyle::default())
+        Self::default().with_text(text, (TextFont::default(), TextColor::default()))
     }
     pub fn empty() -> Self {
         Self::default()
     }
-    pub fn text_with_style(text: impl Into<String>, style: TextStyle) -> Self {
+    pub fn text_with_style(text: impl Into<String>, style: (TextFont, TextColor)) -> Self {
         Self::default().with_text(text, style)
     }
     pub fn add_component<T: Component + Reflect>(mut self, thing: T) -> Self {
@@ -102,14 +120,14 @@ impl Element {
             .extend(children.into().into_iter().map(ElementChildren::Element));
         self
     }
-    pub fn with_text(mut self, text: impl Into<String>, style: TextStyle) -> Self {
+    pub fn with_text(mut self, text: impl Into<String>, style: (TextFont, TextColor)) -> Self {
         self.children = vec![ElementChildren::Text(text.into(), style, None)];
         self
     }
     pub fn with_text_and_components(
         mut self,
         text: impl Into<String>,
-        style: TextStyle,
+        style: (TextFont, TextColor),
         components: Components,
     ) -> Self {
         self.children = vec![ElementChildren::Text(text.into(), style, components.into())];
@@ -136,16 +154,16 @@ impl Element {
 
     pub fn with_style<F>(mut self, mut closure: F) -> Self
     where
-        F: FnMut(&mut Style),
+        F: FnMut(&mut Node),
     {
-        closure(&mut self.node.style);
+        closure(&mut self.node.node);
         self
     }
 }
 
 pub fn insert_component_to_element(
     entity: Entity,
-    component_data: Box<dyn Reflect>,
+    component_data: Box<dyn PartialReflect>,
     type_id: TypeId,
     world: &mut World,
 ) {
@@ -158,7 +176,7 @@ pub fn insert_component_to_element(
         } else {
             println!(
                 "Type '{:?}' does not correspond to a ReflectComponent",
-            component_data.reflect_type_path()
+                component_data.reflect_type_path()
             );
         }
     } else {

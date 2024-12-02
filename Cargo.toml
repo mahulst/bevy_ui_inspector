@@ -8,7 +8,7 @@ repository = "https://github.com/mahulst/bevy_ui_inspector"
 readme = "README.md"
 
 [dependencies]
-bevy = "0.14.2"
-bevy_egui = "0.30.0"
+bevy = "0.15"
+bevy_egui = "0.31.0"
 
 

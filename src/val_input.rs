@@ -120,19 +120,6 @@ pub enum ValTypes {
     VMin,
     VMax,
 }
-impl std::fmt::Display for ValTypes {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            ValTypes::Auto => f.write_str("a"),
-            ValTypes::Px => f.write_str("px"),
-            ValTypes::Percent => f.write_str("%"),
-            ValTypes::Vw => f.write_str("vw"),
-            ValTypes::Vh => f.write_str("vh"),
-            ValTypes::VMin => f.write_str("vmin"),
-            ValTypes::VMax => f.write_str("vmax"),
-        }
-    }
-}
 pub fn get_val_type(val: Val) -> ValTypes {
     match val {
         Val::Px(_) => ValTypes::Px,

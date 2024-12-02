@@ -1,18 +1,47 @@
-use bevy::{prelude::*, render::view::RenderLayers};
+use bevy::{
+    color::palettes::{css::RED, tailwind::BLUE_100},
+    prelude::*,
+    render::view::RenderLayers,
+    ui::NodeQuery,
+};
 use bevy_egui::{
     egui::{self, Ui},
     EguiContexts, EguiPlugin,
 };
-use val_input::ValTypes;
-pub mod dropdown;
-pub mod element;
-pub mod icons;
-pub mod theme;
-pub mod val;
-pub mod val_input;
-pub mod number_input;
-pub mod input_helpers;
+// pub mod dropdown;
+// pub mod element;
+// pub mod icons;
+// pub mod input_helpers;
+// pub mod node_hierarchy;
+// pub mod number_input;
+// pub mod theme;
+// pub mod val;
+// pub mod val_input;
 
+#[derive(Default, Copy, PartialEq, Eq, Clone, Debug, Reflect)]
+pub enum ValTypes {
+    #[default]
+    Auto,
+    Px,
+    Percent,
+    Vw,
+    Vh,
+    VMin,
+    VMax,
+}
+impl std::fmt::Display for ValTypes {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            ValTypes::Auto => f.write_str("a"),
+            ValTypes::Px => f.write_str("px"),
+            ValTypes::Percent => f.write_str("%"),
+            ValTypes::Vw => f.write_str("vw"),
+            ValTypes::Vh => f.write_str("vh"),
+            ValTypes::VMin => f.write_str("vmin"),
+            ValTypes::VMax => f.write_str("vmax"),
+        }
+    }
+}
 #[derive(Resource, Default)]
 pub struct RestorePreviousResource {
     pub selected: Option<Entity>,
@@ -26,7 +55,6 @@ pub struct ActiveStyleInspection {
 struct PickingUiNode {
     is_picking: bool,
 }
-
 
 fn val_dropdown(ui: &mut Ui, val: &mut ValTypes, id: &str) -> bool {
     let mut has_changed = false;
@@ -94,29 +122,35 @@ macro_rules! enum_dropdown {
 fn ui_node_hit_test_system(
     windows: Query<&Window>,
     mouse_button_input: Res<ButtonInput<MouseButton>>,
-    node_query: Query<(Entity, &GlobalTransform, &Node), Without<HoverUiElementMarker>>,
-    node_q: Query<(&Node, &GlobalTransform)>,
+    node_query: Query<
+        (Entity, &GlobalTransform, &ComputedNode),
+        (Without<HoverUiElementWrapperMarker>, Without<HoverUiElementMarker>),
+    >,
+    node_q: Query<(&ComputedNode, &GlobalTransform)>,
     mut previous_resource: ResMut<RestorePreviousResource>,
     mut style_under_inspection: ResMut<ActiveStyleInspection>,
-    hovered_ui_q: Query<Entity, With<HoverUiElementMarker>>,
+    hovered_ui_wrapper_q: Query<Entity, With<HoverUiElementWrapperMarker>>,
+    hovered_ui_q: Query<(Entity, &Node), With<HoverUiElementMarker>>,
     mut picking_ui_node: ResMut<PickingUiNode>,
     mut gizmos: Gizmos,
     mut commands: Commands,
+    ui_scale: Res<UiScale>,
 ) {
-    gizmos.rect_2d(
-        Vec2::ZERO,
-        0.,
-        Vec2::splat(450.0),
-        bevy::color::palettes::css::RED,
-    );
+    let window = windows.get_single().unwrap();
     let entity_m: Option<Entity> = if picking_ui_node.is_picking {
-        let window = windows.get_single().unwrap();
         window.cursor_position().and_then(|cursor_position| {
             let mut nodes_under_cursor = Vec::new();
 
             for (entity, global_transform, node) in node_query.iter() {
-                let position = node.logical_rect(global_transform);
+                let rect =
+                    Rect::from_center_size(global_transform.translation().truncate(), node.size());
+                let scale: f32 = window.scale_factor() / ui_scale.0;
+                let position = Rect {
+                    min: Vec2::new(rect.min.x / scale, rect.min.y / scale),
+                    max: Vec2::new(rect.max.x / scale, rect.max.y / scale),
+                };
 
+                dbg!(scale, position, node.size());
                 if position.contains(cursor_position) {
                     let z = node.stack_index();
 
@@ -140,8 +174,37 @@ fn ui_node_hit_test_system(
     };
     if let Some(entity) = entity_m {
         if let Ok((node, tf)) = node_q.get(entity) {
-            let pos = node.logical_rect(tf);
-            show_hovered_ui(&mut commands, &hovered_ui_q, pos)
+            let rect = Rect::from_center_size(tf.translation().truncate(), node.size());
+            let scale: f32 = window.scale_factor() / ui_scale.0;
+            let pos = Rect {
+                min: Vec2::new(rect.min.x / scale, rect.min.y / scale),
+                max: Vec2::new(rect.max.x / scale, rect.max.y / scale),
+            };
+            let left = window.width() / -2.0;
+
+            let top = window.height() / 2.0;
+            gizmos.line_2d(
+                Vec2::new(left + pos.min.x, top),
+                Vec2::new(left + pos.min.x, -top),
+                Color::srgba(0.0, 0.0, 1.0, 0.3),
+            );
+            gizmos.line_2d(
+                Vec2::new(left + pos.max.x, top),
+                Vec2::new(left + pos.max.x, -top),
+                Color::srgba(0.0, 0.0, 1.0, 0.3),
+            );
+            gizmos.line_2d(
+                Vec2::new(left, top - pos.min.y),
+                Vec2::new(-left, top - pos.min.y),
+                Color::srgba(0.0, 0.0, 1.0, 0.3),
+            );
+            gizmos.line_2d(
+                Vec2::new(left, top - pos.max.y),
+                Vec2::new(-left, top - pos.max.y),
+                Color::srgba(0.0, 0.0, 1.0, 0.3),
+            );
+
+            show_hovered_ui(&mut commands, &hovered_ui_wrapper_q, &hovered_ui_q, pos)
         }
     }
     if mouse_button_input.just_pressed(MouseButton::Left) {
@@ -152,12 +215,16 @@ fn ui_node_hit_test_system(
 fn create_ui(
     mut contexts: EguiContexts,
     ui_root_q: Query<
-        (Entity, &Node, Option<&Children>),
-        (Without<Parent>, Without<HoverUiElementMarker>),
+        (Entity, Option<&Children>),
+        (
+            Without<Parent>,
+            Without<HoverUiElementWrapperMarker>,
+            With<Node>,
+        ),
     >,
     parents_q: Query<&Parent, With<Node>>,
-    ui_q: Query<(Entity, &Node, Option<&Children>, Option<&Name>)>,
-    mut style_q: Query<(&mut Style, &mut BorderColor, &mut BackgroundColor)>,
+    ui_q: Query<(Entity, Option<&Children>, Option<&Name>), (With<Node>)>,
+    mut style_q: Query<(&mut Node, &mut BorderColor, &mut BackgroundColor)>,
     mut previous_resource: ResMut<RestorePreviousResource>,
     mut style_under_inspection: ResMut<ActiveStyleInspection>,
     mut selected_node: Local<Option<Entity>>,
@@ -205,7 +272,7 @@ fn create_ui(
                 ui_root_q
                     .iter()
                     .enumerate()
-                    .for_each(|(i, (root_e, _, children))| {
+                    .for_each(|(i, (root_e, children))| {
                         ui.label("Root");
                         egui::ScrollArea::vertical()
                             .id_salt(i.to_string())
@@ -383,7 +450,7 @@ fn create_ui(
 
 fn render_nested_elements(
     ui: &mut Ui,
-    ui_q: &Query<(Entity, &Node, Option<&Children>, Option<&Name>)>,
+    ui_q: &Query<(Entity, Option<&Children>, Option<&Name>), With<Node>>,
     children: Option<&Children>,
     previous_resource: &mut ResMut<RestorePreviousResource>,
     style_under_inspection: &mut ResMut<ActiveStyleInspection>,
@@ -394,7 +461,7 @@ fn render_nested_elements(
     let mut something_hovered = false;
     if let Some(children) = children {
         children.iter().for_each(|child| {
-            if let Ok((e, _, children, name)) = ui_q.get(*child) {
+            if let Ok((e, children, name)) = ui_q.get(*child) {
                 let name = match name {
                     Some(n) => format!("{} ({})", n.as_str(), e),
                     None => format!("{}", e),
@@ -446,62 +513,70 @@ fn render_nested_elements(
     something_hovered
 }
 #[derive(Component)]
+struct HoverUiElementWrapperMarker;
+#[derive(Component)]
 struct HoverUiElementMarker;
 
 fn show_hovered_ui(
     commands: &mut Commands,
-    hovered_ui_q: &Query<Entity, With<HoverUiElementMarker>>,
+    hovered_ui_wrapper_q: &Query<Entity, With<HoverUiElementWrapperMarker>>,
+    hovered_ui_q: &Query<(Entity, &Node), With<HoverUiElementMarker>>,
     pos: Rect,
 ) {
-    for entity in hovered_ui_q {
-        commands.entity(entity).despawn();
+    let new_style = Node { ..default() };
+
+    if let Ok((e, old_style)) = hovered_ui_q.get_single() {
+        if old_style.left == new_style.left
+            && old_style.top == new_style.top
+            && old_style.width == new_style.width
+            && old_style.height == new_style.height
+        {
+            return;
+        }
+    }
+
+    for entity in hovered_ui_wrapper_q {
+        commands.entity(entity).despawn_recursive();
     }
 
     commands
         .spawn((
-            NodeBundle {
-                style: Style {
-                    position_type: PositionType::Absolute,
-                    left: Val::Px(0.0),
-                    top: Val::Px(0.0),
-                    width: Val::Percent(100.0),
-                    height: Val::Percent(100.0),
-
-                    ..default()
-                },
-                z_index: ZIndex::Global(i32::MAX),
+            Node {
+                position_type: PositionType::Absolute,
+                left: Val::Px(0.0),
+                top: Val::Px(0.0),
+                width: Val::Percent(100.0),
+                height: Val::Percent(100.0),
                 ..default()
             },
-            HoverUiElementMarker,
+            GlobalZIndex(i32::MAX),
+            HoverUiElementWrapperMarker,
         ))
         .with_children(|builder| {
             builder.spawn((
-                NodeBundle {
-                    style: Style {
-                        left: Val::Px(pos.min.x),
-                        top: Val::Px(pos.min.y),
-                        width: Val::Px(pos.max.x - pos.min.x),
-                        height: Val::Px(pos.max.y - pos.min.y),
-                        ..default()
-                    },
-                    background_color: BackgroundColor(Color::srgba(0.0, 0.0, 1.0, 0.3)),
+                Node {
+                    left: Val::Px(pos.min.x),
+                    top: Val::Px(pos.min.y),
+                    width: Val::Px(pos.max.x - pos.min.x),
+                    height: Val::Px(pos.max.y - pos.min.y),
                     ..default()
                 },
+                BackgroundColor(Color::srgba(0.0, 0.0, 1.0, 0.3)),
                 HoverUiElementMarker,
             ));
         });
 }
+
 fn setup(mut commands: Commands) {
     commands.spawn((
-        Camera2dBundle {
-            camera: Camera {
-                clear_color: ClearColorConfig::None,
-                order: 4,
-                ..default()
-            },
+        Camera2d,
+        Camera {
+            clear_color: ClearColorConfig::None,
+            order: 4,
             ..default()
         },
         RenderLayers::layer(10),
+        Name::new("Plugin camera"),
     ));
 }
 pub struct UiInspectorPlugin;
