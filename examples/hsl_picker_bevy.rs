@@ -1,10 +1,5 @@
 //! Shows how to render to a texture. Useful for mirrors, UI, or exporting images.
 
-use std::{
-    any::{Any, TypeId},
-    f32::consts::PI,
-};
-
 use bevy::{color::palettes, prelude::*, window::WindowResolution};
 use bevy_ui_inspector::UiInspectorPlugin;
 
@@ -17,7 +12,7 @@ fn main() {
             }),
             ..default()
         }))
-        .add_plugins(UiInspectorPlugin)
+        .add_plugins(UiInspectorPlugin::default())
         .add_systems(Startup, setup)
         .run();
 }

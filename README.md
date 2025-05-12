@@ -10,7 +10,7 @@ A tool that tries to do what the html / css tools in the chrome dev tools do.
     App::new()
         .add_plugins((
             DefaultPlugins,
-            UiInpector,
+            UiInspectorPlugin::default(),
         ))
         .run()
 

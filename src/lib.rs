@@ -124,7 +124,10 @@ fn ui_node_hit_test_system(
     mouse_button_input: Res<ButtonInput<MouseButton>>,
     node_query: Query<
         (Entity, &GlobalTransform, &ComputedNode),
-        (Without<HoverUiElementWrapperMarker>, Without<HoverUiElementMarker>),
+        (
+            Without<HoverUiElementWrapperMarker>,
+            Without<HoverUiElementMarker>,
+        ),
     >,
     node_q: Query<(&ComputedNode, &GlobalTransform)>,
     mut previous_resource: ResMut<RestorePreviousResource>,
@@ -567,19 +570,8 @@ fn show_hovered_ui(
         });
 }
 
-fn setup(mut commands: Commands) {
-    commands.spawn((
-        Camera2d,
-        Camera {
-            clear_color: ClearColorConfig::None,
-            order: 4,
-            ..default()
-        },
-        RenderLayers::layer(10),
-        Name::new("Plugin camera"),
-    ));
-}
-pub struct UiInspectorPlugin;
+#[derive(Default)]
+pub struct UiInspectorPlugin(pub Msaa);
 impl Plugin for UiInspectorPlugin {
     fn build(&self, app: &mut App) {
         if !app.is_plugin_added::<EguiPlugin>() {
@@ -596,6 +588,21 @@ impl Plugin for UiInspectorPlugin {
         app.insert_resource(ActiveStyleInspection::default());
         app.insert_resource(PickingUiNode::default());
         app.add_systems(Update, (create_ui, ui_node_hit_test_system));
-        app.add_systems(Startup, (setup));
+
+        // TODO: remove once https://github.com/bevyengine/bevy/issues/16590 is fixed
+        let msaa = self.0;
+        app.add_systems(Startup, move |mut commands: Commands| {
+            commands.spawn((
+                Camera2d,
+                Camera {
+                    clear_color: ClearColorConfig::None,
+                    order: 4,
+                    ..default()
+                },
+                RenderLayers::layer(10),
+                msaa,
+                Name::new("UiInspectorPlugin camera"),
+            ));
+        });
     }
 }
