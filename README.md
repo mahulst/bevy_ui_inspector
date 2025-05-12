@@ -1,3 +1,5 @@
+Archived, not really working with bevy anymore. 
+
 # Bevy UI Inspector
 
 A tool that tries to do what the html / css tools in the chrome dev tools do.
