@@ -9,6 +9,4 @@ readme = "README.md"
 
 [dependencies]
 bevy = "0.15"
-bevy_egui = "0.31.0"
-
-
+bevy_egui = "0.32.0"
